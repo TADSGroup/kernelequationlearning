@@ -1,6 +1,6 @@
 # Equation Learning with Kernels
 
-The structure of the project looks like this
+The structure of the project looks like this:
 ```
 KEQL
 ├── README.md
