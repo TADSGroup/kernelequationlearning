@@ -9,6 +9,11 @@ M2 = np.random.randint(2, size=10)
 M3 = np.random.randint(2, size=10)
 M = np.array(np.concatenate((M1,M2,M3)), dtype=bool)
 
+p = 0.5
+M1 = np.array([np.random.binomial(1,p) for i in range(10)])
+M2 = np.array([np.random.binomial(1,p) for i in range(10)])
+M3 = np.array([np.random.binomial(1,p) for i in range(10)])
+
 m = 3
 np.random.seed(2023)
 x_train = np.sort(np.random.uniform(low = 0.0, high = 1.0, size = N))
