@@ -1,17 +1,17 @@
 import numpy as np
 from models import *
 
-np.random.seed(11)
+np.random.seed(9)
 # Pendulum
 N = 10 # Number of collocation points
 m = 3 # Number of functions
-e = 3 # Number of non-zero elements
+e = 10 # Number of non-zero elements
 # N equidistant points in [0,1]
 x_train = np.sort(np.random.uniform(low = 0.0, high = 1.0, size = N))
 # Choose m times e points randomly in x_train
-x_train1 = np.random.choice(x_train, size=e)
-x_train2 = np.random.choice(x_train, size=e)
-x_train3 = np.random.choice(x_train, size=e)
+x_train1 = np.sort(np.random.choice(x_train, size=e, replace=False))
+x_train2 = np.sort(np.random.choice(x_train, size=e, replace=False))
+x_train3 = np.sort(np.random.choice(x_train, size=e, replace=False))
 # Get indices of the e points selected 
 idx_1 = np.where(np.in1d(x_train,x_train1))[0]
 idx_2 = np.where(np.in1d(x_train,x_train2))[0]
@@ -32,10 +32,10 @@ x_train = np.concatenate([x_train1,x_train2,x_train3])
 u_train, u_x_train, u_xx_train = ODE_solutions(x_train, M1, M2, M3, e, k=2,d=3,c=4)
 #u_test,  u_x_test,  u_xx_test  = ODE_solutions(x_test, k=2,d=3,c=4)
 
-x_train_all = np.concatenate([x_train,x_train,x_train]).reshape(-1,1) # 30 * 1
+x_train_all = np.concatenate([x_train1,x_train2,x_train3]).reshape(-1,1) # 30 * 1
 
 def f_Train(model):
-    f_train = np.zeros((N,3))
+    f_train = np.zeros((e,3))
     for i in range(3):
         if model == 'pendulum':
             f_train[:,i] = u_xx_train[:,i] + np.sin(u_train[:,i])

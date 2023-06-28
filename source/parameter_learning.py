@@ -16,7 +16,7 @@ def grid_search_RBF(x_train,u_train, grid = False):
 
   k1 = 10 # size of grid for sigma
   k2 = 20 # size of grid for regularization
-  n_splits = 5
+  n_splits = 3
   
 
   k = np.linspace(10**-3, 2 , num=k1)
@@ -84,7 +84,7 @@ def grid_search_RBF_JAX(x_train,u_train, grid = False):
 
   k1 = 10 # size of grid for sigma
   k2 = 20 # size of grid for regularization
-  n_splits = 5
+  n_splits = 3
   
 
   k = jnp.linspace(10**-3, 2 , num=k1)
@@ -157,10 +157,10 @@ def kernel_parameters(X_train,U_train, e):
     N = len(X_train)
     optim_sgm  = np.zeros(m)
     optim_lmbd = np.zeros(m)
-    alphas     = np.zeros((N,m))
+    alphas     = np.zeros((e,m))
     for i in range(m):
-        optim_sgm[i],optim_lmbd[i] = grid_search_RBF(X_train[e*i:2*(i+1)],U_train[:,i].reshape(-1,1))
-        G = K(Gaussian,X_train[e*i:2*(i+1)],X_train[e*i:2*(i+1)],optim_sgm[i]) 
-        M = (G + optim_lmbd[i]*jnp.eye(N))
+        optim_sgm[i],optim_lmbd[i] = grid_search_RBF(X_train[e*i:e*(i+1)],U_train[:,i].reshape(-1,1))
+        G = K(Gaussian,X_train[e*i:e*(i+1)],X_train[e*i:e*(i+1)],optim_sgm[i]) 
+        M = (G + optim_lmbd[i]*jnp.eye(e))
         alphas[:,i] = jnp.linalg.solve(M,U_train[:,i])
     return optim_sgm, alphas, optim_lmbd

@@ -10,32 +10,32 @@ def ODE_solutions(X, M1, M2, M3, e, k, d, c, m = 3):
     N = len(X)
     
     u    = np.zeros((e,m))
-    u[:,0] = (np.sin(k*np.pi*X[:np.sum(M1)]))
-    u[:,1] = (X[np.sum(M1):np.sum(M2)]**d + 1.0)
-    u[:,2] = (c*np.exp(X[np.sum(M2):np.sum(M3)]))
+    u[:,0] = (np.sin(k*np.pi*X[:e]))
+    u[:,1] = (X[e:2*e]**d + 1.0)
+    u[:,2] = (c*np.exp(X[2*e:3*e]))
     
     u_dot  = np.zeros((e,m))
-    u_dot[:,0] = (k*np.pi*np.cos(k*np.pi*X[:np.sum(M1)]))
-    u_dot[:,1] = (d*X[np.sum(M1):np.sum(M2)]**(d-1))
-    u_dot[:,2] = (c*np.exp(X[np.sum(M2):np.sum(M3)]))
+    u_dot[:,0] = (k*np.pi*np.cos(k*np.pi*X[:e]))
+    u_dot[:,1] = (d*X[e:2*e]**(d-1))
+    u_dot[:,2] = (c*np.exp(X[2*e:3*e]))
     
     u_ddot = np.zeros((e,m))
-    u_ddot[:,0] = (-(k**2)*(np.pi**2)*np.sin(k*np.pi*X[:np.sum(M1)]))
-    u_ddot[:,1] = (d*(d-1)*X[np.sum(M1):np.sum(M2)]**(d-2))
-    u_ddot[:,2] = (c*np.exp(X[np.sum(M2):np.sum(M3)]))
+    u_ddot[:,0] = (-(k**2)*(np.pi**2)*np.sin(k*np.pi*X[:e]))
+    u_ddot[:,1] = (d*(d-1)*X[e:2*e]**(d-2))
+    u_ddot[:,2] = (c*np.exp(X[2*e:3*e]))
     
     return u, u_dot, u_ddot
 
-def predictions_ode(X, X_train, kernel, optim_sgm, alphas):
+def predictions_ode(X, X_train, kernel, optim_sgm, alphas,e):
     m = len(optim_sgm)
     N = len(X)
-    u_pred      = np.zeros((N,m))
-    u_dot_pred  = np.zeros((N,m))
-    u_ddot_pred = np.zeros((N,m))
+    u_pred      = np.zeros((e,m))
+    u_dot_pred  = np.zeros((e,m))
+    u_ddot_pred = np.zeros((e,m))
     for i in range(m):
-        u_pred[:,i]      = np.dot(K(kernel, X, X_train, optim_sgm[i]), alphas[:,i])
-        u_dot_pred[:,i]  = np.dot(K_dot(kernel, X, X_train, optim_sgm[i], 0), alphas[:,i])
-        u_ddot_pred[:,i] = np.dot(K_2dot(kernel, X, X_train, optim_sgm[i], 0, 0), alphas[:,i])
+        u_pred[:,i]      = np.dot(K(kernel, X[e*i:e*(i+1)], X_train[e*i:e*(i+1)], optim_sgm[i]), alphas[:,i])
+        u_dot_pred[:,i]  = np.dot(K_dot(kernel, X[e*i:e*(i+1)], X_train[e*i:e*(i+1)], optim_sgm[i], 0), alphas[:,i])
+        u_ddot_pred[:,i] = np.dot(K_2dot(kernel, X[e*i:e*(i+1)], X_train[e*i:e*(i+1)], optim_sgm[i], 0, 0), alphas[:,i])
     
     return u_pred, u_dot_pred, u_ddot_pred
 
