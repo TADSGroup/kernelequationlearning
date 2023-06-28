@@ -147,10 +147,11 @@ def grid_search_RBF_JAX(x_train,u_train, grid = False):
 
 
 # kernel parameters
-def kernel_parameters(X_train,U_train):
+def kernel_parameters(X_train,U_train, e):
     '''
     X_train: N x d array with collocation points.
     U_train: N x m array with values of u at X_train.
+    e: Number of observed values.
     '''
     m = U_train.shape[1] # Number of functions
     N = len(X_train)
@@ -158,8 +159,8 @@ def kernel_parameters(X_train,U_train):
     optim_lmbd = np.zeros(m)
     alphas     = np.zeros((N,m))
     for i in range(m):
-        optim_sgm[i],optim_lmbd[i] = grid_search_RBF(X_train,U_train[:,i].reshape(-1,1))
-        G = K(Gaussian,X_train,X_train,optim_sgm[i]) 
+        optim_sgm[i],optim_lmbd[i] = grid_search_RBF(X_train[e*i:2*(i+1)],U_train[:,i].reshape(-1,1))
+        G = K(Gaussian,X_train[e*i:2*(i+1)],X_train[e*i:2*(i+1)],optim_sgm[i]) 
         M = (G + optim_lmbd[i]*jnp.eye(N))
         alphas[:,i] = jnp.linalg.solve(M,U_train[:,i])
     return optim_sgm, alphas, optim_lmbd

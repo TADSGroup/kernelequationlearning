@@ -5,24 +5,24 @@ from kernels import *
 
 ##########################    PENDULUM    ##########################
 
-def ODE_solutions(X, k, d, c, m = 3):
+def ODE_solutions(X, M1, M2, M3, e, k, d, c, m = 3):
 	
     N = len(X)
-
-    u    = np.zeros((N,m))
-    u[:,0] = (np.sin(k*np.pi*X))
-    u[:,1] = (X**d + 1.0)
-    u[:,2] = (c*np.exp(X))
     
-    u_dot  = np.zeros((N,m))
-    u_dot[:,0] = (k*np.pi*np.cos(k*np.pi*X))
-    u_dot[:,1] = (d*X**(d-1))
-    u_dot[:,2] = (c*np.exp(X))
+    u    = np.zeros((e,m))
+    u[:,0] = (np.sin(k*np.pi*X[:np.sum(M1)]))
+    u[:,1] = (X[np.sum(M1):np.sum(M2)]**d + 1.0)
+    u[:,2] = (c*np.exp(X[np.sum(M2):np.sum(M3)]))
     
-    u_ddot = np.zeros((N,m))
-    u_ddot[:,0] = (-(k**2)*(np.pi**2)*np.sin(k*np.pi*X))
-    u_ddot[:,1] = (d*(d-1)*X**(d-2))
-    u_ddot[:,2] = (c*np.exp(X))
+    u_dot  = np.zeros((e,m))
+    u_dot[:,0] = (k*np.pi*np.cos(k*np.pi*X[:np.sum(M1)]))
+    u_dot[:,1] = (d*X[np.sum(M1):np.sum(M2)]**(d-1))
+    u_dot[:,2] = (c*np.exp(X[np.sum(M2):np.sum(M3)]))
+    
+    u_ddot = np.zeros((e,m))
+    u_ddot[:,0] = (-(k**2)*(np.pi**2)*np.sin(k*np.pi*X[:np.sum(M1)]))
+    u_ddot[:,1] = (d*(d-1)*X[np.sum(M1):np.sum(M2)]**(d-2))
+    u_ddot[:,2] = (c*np.exp(X[np.sum(M2):np.sum(M3)]))
     
     return u, u_dot, u_ddot
 
