@@ -26,7 +26,7 @@ def grid_search_RBF(x_train,u_train, grid = False):
   sgm = beta*k
   
   # Search space for lambda 
-  lmbd = 10**np.linspace(-12, 0, k2)
+  lmbd = 10**np.linspace(-14, -8, k2)
 
   scores_rbf = np.zeros((k1, k2))
   scores_std_rbf = np.zeros((k1, k2))
@@ -94,7 +94,7 @@ def grid_search_RBF_JAX(x_train,u_train, grid = False):
   sgm = beta*k
   
   # Search space for lambda 
-  lmbd = 10**jnp.linspace(-12, 0, k2)
+  lmbd = 10**jnp.linspace(-14, -8, k2)
 
   scores_rbf = jnp.zeros((k1, k2))
   scores_std_rbf = np.zeros((k1, k2))
@@ -161,6 +161,9 @@ def kernel_parameters(X_train,U_train, e):
     for i in range(m):
         optim_sgm[i],optim_lmbd[i] = grid_search_RBF(X_train[e*i:e*(i+1)],U_train[:,i].reshape(-1,1))
         G = K(Gaussian,X_train[e*i:e*(i+1)],X_train[e*i:e*(i+1)],optim_sgm[i]) 
+        #if i == 1:
+        #  M = (G + 1e-12*jnp.eye(e))
+        #else:
         M = (G + optim_lmbd[i]*jnp.eye(e))
         alphas[:,i] = jnp.linalg.solve(M,U_train[:,i])
     return optim_sgm, alphas, optim_lmbd
