@@ -161,9 +161,6 @@ def kernel_parameters(X_train,U_train, e):
     for i in range(m):
         optim_sgm[i],optim_lmbd[i] = grid_search_RBF(X_train[e*i:e*(i+1)],U_train[:,i].reshape(-1,1))
         G = K(Gaussian,X_train[e*i:e*(i+1)],X_train[e*i:e*(i+1)],optim_sgm[i]) 
-        #if i == 1:
-        #  M = (G + 1e-12*jnp.eye(e))
-        #else:
         M = (G + optim_lmbd[i]*jnp.eye(e))
         alphas[:,i] = jnp.linalg.solve(M,U_train[:,i])
     return optim_sgm, alphas, optim_lmbd
