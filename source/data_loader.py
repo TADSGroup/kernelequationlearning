@@ -8,6 +8,7 @@ m = 3 # Number of functions
 e = 3 # Number of non-zero elements
 # N equidistant points in [0,1]
 x_train = np.linspace(start=0.0, stop=1.0, num=N)
+x_test = x_train
 # Choose m times e points randomly in x_train
 x_train1 = np.sort(np.random.choice(x_train, size=e, replace=False))
 x_train2 = np.sort(np.random.choice(x_train, size=e, replace=False))
