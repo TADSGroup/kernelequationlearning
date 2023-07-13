@@ -5,7 +5,7 @@ from kernels import *
 
 ##########################    PENDULUM    ##########################
 
-def ODE_solutions(X, M1, M2, M3, e, k, d, c, m = 3):
+def ODE_solutions(X, e, k, d, c, m = 3):
 	
     N = len(X)
     
@@ -26,16 +26,16 @@ def ODE_solutions(X, M1, M2, M3, e, k, d, c, m = 3):
     
     return u, u_dot, u_ddot
 
-def predictions_ode(X, X_train, kernel, optim_sgm, alphas,e):
+def predictions_ode(X, X_train, kernel, optim_sgm, alphas, e_train, e_test):
     m = len(optim_sgm)
     N = len(X)
-    u_pred      = np.zeros((e,m))
-    u_dot_pred  = np.zeros((e,m))
-    u_ddot_pred = np.zeros((e,m))
+    u_pred      = np.zeros((e_test,m))
+    u_dot_pred  = np.zeros((e_test,m))
+    u_ddot_pred = np.zeros((e_test,m))
     for i in range(m):
-        u_pred[:,i]      = np.dot(K(kernel, X[e*i:e*(i+1)], X_train[e*i:e*(i+1)], optim_sgm[i]), alphas[:,i])
-        u_dot_pred[:,i]  = np.dot(K_dot(kernel, X[e*i:e*(i+1)], X_train[e*i:e*(i+1)], optim_sgm[i], 0), alphas[:,i])
-        u_ddot_pred[:,i] = np.dot(K_2dot(kernel, X[e*i:e*(i+1)], X_train[e*i:e*(i+1)], optim_sgm[i], 0, 0), alphas[:,i])
+        u_pred[:,i]      = np.dot(K(kernel, X[e_test*i:e_test*(i+1)], X_train[e_train*i:e_train*(i+1)], optim_sgm[i]), alphas[:,i])
+        u_dot_pred[:,i]  = np.dot(K_dot(kernel, X[e_test*i:e_test*(i+1)], X_train[e_train*i:e_train*(i+1)], optim_sgm[i], 0), alphas[:,i])
+        u_ddot_pred[:,i] = np.dot(K_2dot(kernel, X[e_test*i:e_test*(i+1)], X_train[e_train*i:e_train*(i+1)], optim_sgm[i], 0, 0), alphas[:,i])
     
     return u_pred, u_dot_pred, u_ddot_pred
 
