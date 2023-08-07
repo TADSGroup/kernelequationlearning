@@ -44,7 +44,7 @@ def f_Train(model):
     for i in range(3):
         if model == 'pendulum':
             f_train[:,i] = u_xx_train[:,i] + np.sin(u_train[:,i])
-    f_train = f_train.T.flatten()  # 300 * 1
+    f_train = f_train.T.flatten()  # 30 * 1
     return f_train
 
 def f_Test(model,e_test):
@@ -52,7 +52,7 @@ def f_Test(model,e_test):
     for i in range(3):
         if model == 'pendulum':
             f_test[:,i] = u_xx_test[:,i] + np.sin(u_test[:,i])
-    f_test = f_test.T.flatten()  # 300 * 1
+    f_test = f_test.T.flatten()  # 30 * 1
     return f_test
 
 def f_true_Test(model, s_test):
