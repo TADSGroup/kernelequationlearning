@@ -3,7 +3,8 @@ from models import *
 
 np.random.seed(9)
 # Pendulum
-N = 10 # Number of collocation points
+#N = 10 # Number of collocation points
+N = 4 # Number of collocation points
 m = 3 # Number of functions
 e = 3 # Number of non-zero elements for training
 e_test = N # Number of non-zero elements for test
