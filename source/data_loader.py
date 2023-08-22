@@ -26,7 +26,7 @@ M2 = np.zeros(N, dtype=bool)
 M3 = np.zeros(N, dtype=bool)
 # Set the values at specified indices to True
 M1[idx_1] = True
-M2[idx_1] = True
+M2[idx_2] = True
 M3[idx_3] = True
 # Concatenate the observed indices in one array
 M = np.array(np.concatenate((M1,M2,M3)), dtype=bool)
