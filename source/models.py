@@ -133,3 +133,17 @@ def darcy_solutions(X, k, d, c, m=3):
     a_y = u_dot(a, X, 2, 1)
 
     return u, u_x, u_y, u_xx, u_yy, a_vals, a_x, a_y
+
+##########################     KS      ##########################
+
+def predictions_KS(X, X_train, kernel, optim_sgm, alphas, e_train, e_test):
+    m = len(optim_sgm)
+    N = len(X)
+    u_pred    = np.zeros((N,m))
+    u_x_pred  = np.zeros((N,m))
+    u_t_pred  = np.zeros((N,m))
+    for i in range(m):
+        u_pred[:,i]    = np.dot(K_2D(kernel, X, X_train, optim_sgm[i]), alphas[:,i])
+        u_x_pred[:,i]  = np.dot(K_dot2D(kernel, X, X_train, optim_sgm[i], 0), alphas[:,i])
+        u_t_pred[:,i]  = np.dot(K_dot2D(kernel, X, X_train, optim_sgm[i], 1), alphas[:,i])
+    return u_pred, u_x_pred, u_t_pred
