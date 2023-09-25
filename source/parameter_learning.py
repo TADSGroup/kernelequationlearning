@@ -172,7 +172,7 @@ def grid_search_Anisotropic_Gaussian_2D(x_train,u_train, print_MSE = False):
   distances_x = dist.pdist(x_train[:,1][:,np.newaxis]) # pairwise distances
   beta_x = np.median(distances_x) # median of the pairwise distances
   # Search space for sigma_t
-  sgm_x = beta_t*kk2
+  sgm_x = beta_x*kk2
 
 
   # Search space for lambda 
@@ -271,7 +271,7 @@ def kernel_parameters_Anisotropic_RBF_2D(X_train, U_train, e):
     alphas     = np.zeros((e,m))
     
     for i in range(m):
-        optim_sgm[i],optim_lmbd[i] = grid_search_Anisotropic_Gaussian_2D(X_train[e*i:e*(i+1)], U_train[:,i].reshape(-1,1))
+        optim_sgm[i], optim_lmbd[i] = grid_search_Anisotropic_Gaussian_2D(X_train[e*i:e*(i+1)], U_train[:,i].reshape(-1,1))
         G = K_2D(Anisotropic_Gaussian_2D, X_train[e*i:e*(i+1)],X_train[e*i:e*(i+1)],optim_sgm[i]) 
         M = (G + optim_lmbd[i]*jnp.eye(e))
         alphas[:,i] = jnp.linalg.solve(M,U_train[:,i])
