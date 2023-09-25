@@ -157,18 +157,19 @@ def grid_search_Anisotropic_Gaussian_2D(x_train,u_train, print_MSE = False):
   k1 = 10 # size of grid for scale_t
   k2 = 10 # size of grid for scale_x
   k3 = 20 # size of grid for regularization
+  
   n_splits = 3
   
   # scale_t
   kk1 = np.linspace(10**-3, 2 , num=k1)
-  distances_t = dist.pdist(x_train[0]) # pairwise distances
+  distances_t = dist.pdist(x_train[:,0][:,np.newaxis]) # pairwise distances
   beta_t = np.median(distances_t) # median of the pairwise distances
   # Search space for sigma_t
   sgm_t = beta_t*kk1
   
   # scale_x
   kk2 = np.linspace(10**-3, 2 , num=k2)
-  distances_x = dist.pdist(x_train[1]) # pairwise distances
+  distances_x = dist.pdist(x_train[:,1][:,np.newaxis]) # pairwise distances
   beta_x = np.median(distances_x) # median of the pairwise distances
   # Search space for sigma_t
   sgm_x = beta_t*kk2
@@ -186,11 +187,11 @@ def grid_search_Anisotropic_Gaussian_2D(x_train,u_train, print_MSE = False):
   for i in range(k1):
     sigma_t = sgm_t[i]
 
-    for i in range(k2):
+    for j in range(k2):
       sigma_x = sgm_x[i]
 
       for k in range(k3):
-        alpha = lmbd[j]
+        alpha = lmbd[k]
 
         kf = KFold(n_splits = n_splits) 
         mse = 0.
@@ -221,14 +222,16 @@ def grid_search_Anisotropic_Gaussian_2D(x_train,u_train, print_MSE = False):
   ijk_min_rbf = np.array( np.where( scores_rbf == np.nanmin(scores_rbf) ), dtype=int).flatten()
   optim_sgm_t = sgm_t[ijk_min_rbf[0]]
   optim_sgm_x = sgm_x[ijk_min_rbf[1]]
+  optim_sgm = np.array([optim_sgm_t, optim_sgm_x])
   optim_lmbd = lmbd[ijk_min_rbf[2]]
+
   
   return optim_sgm, optim_lmbd
 
 
 
-# kernel parameters
-def kernel_parameters(X_train,U_train, e):
+# Kernel parameters - 1D - RBF
+def kernel_parameters(X_train, U_train, e):
     '''
     X_train: N x d array with collocation points.
     U_train: N x m array with values of u at X_train.
@@ -241,7 +244,35 @@ def kernel_parameters(X_train,U_train, e):
     alphas     = np.zeros((e,m))
     for i in range(m):
         optim_sgm[i],optim_lmbd[i] = grid_search_RBF(X_train[e*i:e*(i+1)],U_train[:,i].reshape(-1,1))
-        G = K(Gaussian,X_train[e*i:e*(i+1)],X_train[e*i:e*(i+1)],optim_sgm[i]) 
+        G = K(Gaussian,X_train[e*i:e*(i+1)], X_train[e*i:e*(i+1)], optim_sgm[i]) 
+        M = (G + optim_lmbd[i]*jnp.eye(e))
+        alphas[:,i] = jnp.linalg.solve(M, U_train[:,i])
+    return optim_sgm, alphas, optim_lmbd
+
+# Kernel parameters - 2D - Anisotropic RBF 
+def kernel_parameters_Anisotropic_RBF_2D(X_train, U_train, e):
+    '''
+    Parameters
+    ----------
+    X_train: N x d array with collocation points.
+    U_train: N x m array with values of u at X_train.
+    e: Number of observed values.
+    Returns
+    -------
+    optim_sgm: 2 x m array with the scale_t and scale_x per function.
+    alphas: e x m array with dual coefficients for each kernel interpolant. 
+    optim_lmbd: (m, 1) array with optimal regularization per function.
+
+    '''
+    m = U_train.shape[1] # Number of functions
+
+    optim_sgm  = np.zeros((m,2))
+    optim_lmbd = np.zeros(m)
+    alphas     = np.zeros((e,m))
+    
+    for i in range(m):
+        optim_sgm[i],optim_lmbd[i] = grid_search_Anisotropic_Gaussian_2D(X_train[e*i:e*(i+1)], U_train[:,i].reshape(-1,1))
+        G = K_2D(Anisotropic_Gaussian_2D, X_train[e*i:e*(i+1)],X_train[e*i:e*(i+1)],optim_sgm[i]) 
         M = (G + optim_lmbd[i]*jnp.eye(e))
         alphas[:,i] = jnp.linalg.solve(M,U_train[:,i])
     return optim_sgm, alphas, optim_lmbd
