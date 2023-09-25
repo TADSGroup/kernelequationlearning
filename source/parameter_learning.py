@@ -5,13 +5,14 @@ import jax.numpy as jnp
 from kernels import *
 import scipy.spatial.distance as dist
 
-# Cross validation - Grid search
-def grid_search_RBF(x_train,u_train, grid = False):
+# 1D
+
+# Grid search
+def grid_search_RBF(x_train,u_train, print_MSE = False):
   '''
     x_train: N x d array with collocation points.
     u_train: N x 1 values of u at x_train.
-    kernel: Kernel to learn its parameters. 
-    grid: Bool. Output the value of the loss.
+    print_MSE: Bool. Output the value of the loss.
   '''
 
   k1 = 10 # size of grid for sigma
@@ -61,8 +62,7 @@ def grid_search_RBF(x_train,u_train, grid = False):
       
       scores_rbf[i,j] = mse/n_splits
 
-  if grid:
-    print('The grid with the loss values is:')
+  if print_MSE:
     print('NegMSEs are for every pair of indices: \n {}'.format(np.round(scores_rbf,1)))
 
   
@@ -73,13 +73,12 @@ def grid_search_RBF(x_train,u_train, grid = False):
   return optim_sgm, optim_lmbd
 
 
-# Cross validation - Grid search - Jax version
-def grid_search_RBF_JAX(x_train,u_train, grid = False):
+# Grid search - JAX version
+def grid_search_RBF_JAX(x_train,u_train, print_MSE = False):
   '''
     x_train: N x d array with collocation points.
-    u_train: N x 1 values of u at x_train.
-    kernel: Kernel to learn its parameters. 
-    grid: Bool. Output the value of the loss.
+    u_train: N x 1 values of u at x_train. 
+    print_MSE: Bool. Output the value of the loss.
   '''
 
   k1 = 10 # size of grid for sigma
@@ -129,8 +128,7 @@ def grid_search_RBF_JAX(x_train,u_train, grid = False):
       
       scores_rbf = scores_rbf.at[i,j].set(mse/n_splits)
 
-  if grid:
-    print('The grid with the loss values is:')
+  if print_MSE:
     print('NegMSEs are for every pair of indices: \n {}'.format(np.round(scores_rbf,1)))
 
   
@@ -144,6 +142,89 @@ def grid_search_RBF_JAX(x_train,u_train, grid = False):
   optim_lmbd = jnp.array(lmbd[min_col_index])
 
   return optim_sgm, optim_lmbd
+
+
+# 2D
+
+# Grid search
+def grid_search_Anisotropic_Gaussian_2D(x_train,u_train, print_MSE = False):
+  '''
+    x_train: N x d array with collocation points.
+    u_train: N x 1 values of u at x_train.
+    print_MSE: Bool. Output the value of the loss.
+  '''
+
+  k1 = 10 # size of grid for scale_t
+  k2 = 10 # size of grid for scale_x
+  k3 = 20 # size of grid for regularization
+  n_splits = 3
+  
+  # scale_t
+  kk1 = np.linspace(10**-3, 2 , num=k1)
+  distances_t = dist.pdist(x_train[0]) # pairwise distances
+  beta_t = np.median(distances_t) # median of the pairwise distances
+  # Search space for sigma_t
+  sgm_t = beta_t*kk1
+  
+  # scale_x
+  kk2 = np.linspace(10**-3, 2 , num=k2)
+  distances_x = dist.pdist(x_train[1]) # pairwise distances
+  beta_x = np.median(distances_x) # median of the pairwise distances
+  # Search space for sigma_t
+  sgm_x = beta_t*kk2
+
+
+  # Search space for lambda 
+  lmbd = 10**np.linspace(-14, -8, k3)
+
+  # Arrays to store MSEs
+  scores_rbf = np.zeros((k1, k2, k3))
+  scores_std_rbf = np.zeros((k1, k2, k3))
+
+  mses = []
+  
+  for i in range(k1):
+    sigma_t = sgm_t[i]
+
+    for i in range(k2):
+      sigma_x = sgm_x[i]
+
+      for k in range(k3):
+        alpha = lmbd[j]
+
+        kf = KFold(n_splits = n_splits) 
+        mse = 0.
+
+        for l, (train_index, test_index) in enumerate(kf.split(x_train)):
+          #print(f"Fold {l}:")
+          #print(f"  Train: index={train_index}")
+          xtrain, ytrain = x_train[train_index,:], u_train[train_index]
+          #print(f"  Test:  index={test_index}")
+          xtest, ytest = x_train[test_index,:], u_train[test_index] 
+          # Train here 
+          G = K_2D(Anisotropic_Gaussian_2D, xtrain, xtrain, np.array([sigma_t, sigma_x])) 
+          M = (G + alpha*jnp.eye(xtrain.shape[0]))
+          alphas_lu = jnp.linalg.solve(M,ytrain)
+          
+          # Predict on test data
+          k_test_train = K_2D(Anisotropic_Gaussian_2D, xtest, xtrain, np.array([sigma_t, sigma_x]))
+          y_pred = np.dot(k_test_train, alphas_lu)
+
+          mse += jnp.mean((y_pred - ytest)**2)
+        
+        scores_rbf[i,j,k] = mse/n_splits
+
+  if print_MSE:
+    print('NegMSEs are for every pair of indices: \n {}'.format(np.round(scores_rbf,1)))
+
+  
+  ijk_min_rbf = np.array( np.where( scores_rbf == np.nanmin(scores_rbf) ), dtype=int).flatten()
+  optim_sgm_t = sgm_t[ijk_min_rbf[0]]
+  optim_sgm_x = sgm_x[ijk_min_rbf[1]]
+  optim_lmbd = lmbd[ijk_min_rbf[2]]
+  
+  return optim_sgm, optim_lmbd
+
 
 
 # kernel parameters
