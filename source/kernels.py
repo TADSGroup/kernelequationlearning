@@ -80,7 +80,7 @@ def Anisotropic_Gaussian_2D(x1,x2,y1,y2,params):
 @jit
 def Matern_Kernel_52_2D(x1,x2,y1,y2,params):
 	rho = params
-	d = jnp.sqrt(((x1-y1)**2 + (x2-y2)**2))
+	d = jnp.sqrt(((x1-y1)**2 + 10*(x2-y2)**2) + 1e-8)
 	coef = (1 + (jnp.sqrt(5)*d/rho) + (5*d**2/(3*rho**2)))
 	return coef * jnp.exp(-jnp.sqrt(5)*d/rho)
 
