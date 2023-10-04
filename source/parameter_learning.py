@@ -358,7 +358,7 @@ def kernel_parameters_Matern52_2D(X_train, U_train, e):
     '''
     m = U_train.shape[1] # Number of functions
 
-    optim_rho  = np.zeros((m,2))
+    optim_rho  = np.zeros(m)
     optim_lmbd = np.zeros(m)
     alphas     = np.zeros((e,m))
     

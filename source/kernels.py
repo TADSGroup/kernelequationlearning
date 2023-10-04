@@ -77,11 +77,11 @@ def Anisotropic_Gaussian_2D(x1,x2,y1,y2,params):
 # 	d = jnp.sqrt(((x1-y1)**2 + (x2-y2)**2))
 # 	coef = sigma**2 * (1 + (jnp.sqrt(5)*d/rho) + (5*d**2/3*rho**2))
 # 	return coef * jnp.exp(-jnp.sqrt(5)*d/rho)
-
+@jit
 def Matern_Kernel_52_2D(x1,x2,y1,y2,params):
 	rho = params
 	d = jnp.sqrt(((x1-y1)**2 + (x2-y2)**2))
-	coef = (1 + (jnp.sqrt(5)*d/rho) + (5*d**2/3*rho**2))
+	coef = (1 + (jnp.sqrt(5)*d/rho) + (5*d**2/(3*rho**2)))
 	return coef * jnp.exp(-jnp.sqrt(5)*d/rho)
 
 # Kernel matrices

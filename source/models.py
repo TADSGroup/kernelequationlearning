@@ -136,8 +136,8 @@ def darcy_solutions(X, k, d, c, m=3):
 
 ##########################     KS      ##########################
 
-def predictions_KS(X, X_train, kernel, optim_sgm, alphas, e_train, e_test):
-    m = len(optim_sgm)
+def predictions_KS(X, X_train, kernel, optim_rho, alphas, e_train, e_test):
+    m = len(optim_rho)
     N = len(X)
     u_pred    = np.zeros((N,m))
     u_x_pred  = np.zeros((N,m))
@@ -145,9 +145,9 @@ def predictions_KS(X, X_train, kernel, optim_sgm, alphas, e_train, e_test):
     u_xx_pred = np.zeros((N,m))
     u_xxxx_pred = np.zeros((N,m))
     for i in range(m):
-        u_pred[:,i]    = np.dot(K_2D(kernel, X, X_train, optim_sgm[i]), alphas[:,i])
-        u_x_pred[:,i]  = np.dot(K_dot2D(kernel, X, X_train, optim_sgm[i], 0), alphas[:,i])
-        u_t_pred[:,i]  = np.dot(K_dot2D(kernel, X, X_train, optim_sgm[i], 1), alphas[:,i])
-        u_xx_pred[:,i] = np.dot(K_2dot2D(kernel, X, X_train, optim_sgm[i], 0, 0), alphas[:,i])
-        u_xxxx_pred[:,i] = np.dot(K_4dot2D(kernel, X, X_train, optim_sgm[i], 0, 0, 0, 0), alphas[:,i])
-    return u_pred, u_x_pred, u_t_pred
+        u_pred[:,i]    = np.dot(K_2D(kernel, X, X_train, optim_rho[i]), alphas[:,i])
+        u_x_pred[:,i]  = np.dot(K_dot2D(kernel, X, X_train, optim_rho[i], 0), alphas[:,i])
+        u_t_pred[:,i]  = np.dot(K_dot2D(kernel, X, X_train, optim_rho[i], 1), alphas[:,i])
+        u_xx_pred[:,i] = np.dot(K_2dot2D(kernel, X, X_train, optim_rho[i], 0, 0), alphas[:,i])
+        u_xxxx_pred[:,i] = np.dot(K_4dot2D(kernel, X, X_train, optim_rho[i], 0, 0, 0, 0), alphas[:,i])
+    return u_pred, u_x_pred, u_t_pred ,u_xx_pred ,u_xxxx_pred
