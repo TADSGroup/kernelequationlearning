@@ -271,12 +271,12 @@ def grid_search_Matern52_2D(x_train,u_train, print_MSE = False):
         #print(f"  Test:  index={test_index}")
         xtest, ytest = x_train[test_index,:], u_train[test_index] 
         # Train here 
-        G = K(Gaussian, xtrain, xtrain, rho) 
+        G = K_2D(Matern_Kernel_52_2D, xtrain, xtrain, rho) 
         M = (G + alpha*jnp.eye(xtrain.shape[0]))
         alphas_lu = jnp.linalg.solve(M,ytrain)
          
         # Predict on test data
-        k_test_train = K(Gaussian, xtest, xtrain, rho)
+        k_test_train = K_2D(Matern_Kernel_52_2D, xtest, xtrain, rho)
         y_pred = np.dot(k_test_train, alphas_lu)
 
         mse += jnp.mean((y_pred - ytest)**2)
@@ -292,6 +292,73 @@ def grid_search_Matern52_2D(x_train,u_train, print_MSE = False):
   optim_lmbd = lmbd[ij_min_rbf[1]]
   
   return optim_rho, optim_lmbd
+
+# Grid search
+def grid_search_Matern112_2D(x_train,u_train, print_MSE = False):
+  '''
+    x_train: N x d array with collocation points.
+    u_train: N x 1 values of u at x_train.
+    print_MSE: Bool. Output the value of the loss.
+  '''
+
+  k1 = 10 # size of grid for rho
+  k2 = 20 # size of grid for regularization
+  n_splits = 3
+  
+
+  k = np.linspace(10**-3, 2 , num=k1)
+  distances = dist.pdist(x_train) # pairwise distances
+  beta = np.percentile(distances, 50) # median of the pairwise distances
+  # Search space for rho
+  rhos = beta*k
+  
+  # Search space for lambda 
+  lmbd = 10**np.linspace(-14, -8, k2)
+
+  scores_matern112 = np.zeros((k1, k2))
+  scores_std_matern112 = np.zeros((k1, k2))
+
+  mses = []
+  
+  for i in range(k1):
+    rho = rhos[i]
+
+    for j in range(k2):
+      alpha = lmbd[j]
+
+      kf = KFold(n_splits = n_splits) 
+      mse = 0.
+
+      for l, (train_index, test_index) in enumerate(kf.split(x_train)):
+        #print(f"Fold {l}:")
+        #print(f"  Train: index={train_index}")
+        xtrain, ytrain = x_train[train_index,:], u_train[train_index]
+        #print(f"  Test:  index={test_index}")
+        xtest, ytest = x_train[test_index,:], u_train[test_index] 
+        # Train here 
+        G = K_2D(Matern_Kernel_112_2D, xtrain, xtrain, rho) 
+        M = (G + alpha*jnp.eye(xtrain.shape[0]))
+        alphas_lu = jnp.linalg.solve(M,ytrain)
+         
+        # Predict on test data
+        k_test_train = K_2D(Matern_Kernel_112_2D, xtest, xtrain, rho)
+        y_pred = np.dot(k_test_train, alphas_lu)
+
+        mse += jnp.mean((y_pred - ytest)**2)
+      
+      scores_matern112[i,j] = mse/n_splits
+
+  if print_MSE:
+    print('NegMSEs are for every pair of indices: \n {}'.format(np.round(scores_matern112, 1)))
+
+  
+  ij_min_rbf = np.array( np.where( scores_matern112 == np.nanmin(scores_matern112) ), dtype=int).flatten()
+  optim_rho = rhos[ij_min_rbf[0]]
+  optim_lmbd = lmbd[ij_min_rbf[1]]
+  
+  return optim_rho, optim_lmbd
+
+
 
 
 # Kernel parameters - 1D - RBF
@@ -365,6 +432,35 @@ def kernel_parameters_Matern52_2D(X_train, U_train, e):
     for i in range(m):
         optim_rho[i], optim_lmbd[i] = grid_search_Matern52_2D(X_train[e*i:e*(i+1)], U_train[:,i].reshape(-1,1))
         G = K_2D(Matern_Kernel_52_2D, X_train[e*i:e*(i+1)],X_train[e*i:e*(i+1)],optim_rho[i]) 
+        #M = (G + optim_lmbd[i]*jnp.eye(e)) # Using nugget
+        M = G # No nugget
+        alphas[:,i] = jnp.linalg.solve(M,U_train[:,i])
+    return optim_rho, alphas, optim_lmbd
+
+# Kernel parameters - 2D - Matern112 
+def kernel_parameters_Matern112_2D(X_train, U_train, e):
+    '''
+    Parameters
+    ----------
+    X_train: N x d array with collocation points.
+    U_train: N x m array with values of u at X_train.
+    e: Number of observed values.
+    Returns
+    -------
+    optim_rho: 2 x m array with the scale_t and scale_x per function.
+    alphas: e x m array with dual coefficients for each kernel interpolant. 
+    optim_lmbd: (m, 1) array with optimal regularization per function.
+
+    '''
+    m = U_train.shape[1] # Number of functions
+
+    optim_rho  = np.zeros(m)
+    optim_lmbd = np.zeros(m)
+    alphas     = np.zeros((e,m))
+    
+    for i in range(m):
+        optim_rho[i], optim_lmbd[i] = grid_search_Matern112_2D(X_train[e*i:e*(i+1)], U_train[:,i].reshape(-1,1))
+        G = K_2D(Matern_Kernel_112_2D, X_train[e*i:e*(i+1)],X_train[e*i:e*(i+1)],optim_rho[i]) 
         #M = (G + optim_lmbd[i]*jnp.eye(e)) # Using nugget
         M = G # No nugget
         alphas[:,i] = jnp.linalg.solve(M,U_train[:,i])
