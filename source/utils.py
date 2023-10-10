@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+import numpy as np
 
 class MinMaxScaler:
     def __init__(self, feature_range=(0, 1)):
@@ -16,3 +17,27 @@ class MinMaxScaler:
 
     def inverse_transform(self, X_scaled):
         return (X_scaled - self.min_) / self.scale_
+
+def needed_regularity_Matern(k,d):
+  """
+    Parameters
+    ----------
+    k : int
+        Level of desired regularity in C^k.
+    d : int
+        Dimension of the domain of the DE.
+
+    Returns
+    -------
+    nu
+        Nice regularity class in Matern kernel(nu = s - d/2).
+  """
+  s = np.floor(d/2 + k) + 1
+  nu = s - d/2
+  t = nu - 0.5
+  if t.is_integer():
+    print('Needed regularity in Matern class is {}/2'.format(int(2*nu)))
+    return nu
+  else:
+    print('Needed regularity in Matern class is {}/2'.format(int((2*(nu+0.5)))))
+    return nu + 1/2
