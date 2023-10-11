@@ -93,7 +93,7 @@ def Matern_Kernel_112_2D(x1,x2,y1,y2,params):
 
 @jit
 def Polynomial_2D(x1,x2,y1,y2,params):
-	c0,d = params
+	c0, d = params
 	return (x1*y1 + x2*y2 +c0)**d
 
 # Kernel matrices
