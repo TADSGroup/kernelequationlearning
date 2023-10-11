@@ -96,6 +96,11 @@ def Polynomial_2D(x1,x2,y1,y2,params):
 	c0, d = params
 	return (x1*y1 + x2*y2 +c0)**d
 
+@jit
+def Polynomial_2D(x1,x2,y1,y2,params):
+	d = params
+	return (x1*y1 + x2*y2)**d
+
 # Kernel matrices
 def K_2D(kernel, T,T_, params):
   return vmap(lambda t: vmap(lambda t_: kernel(t[0],t[1], t_[0],t_[1], params))(T_))(T)

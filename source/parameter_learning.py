@@ -418,7 +418,7 @@ def kernel_parameters_Matern52_2D(X_train, U_train, e):
     e: Number of observed values.
     Returns
     -------
-    optim_rho: 2 x m array with the scale_t and scale_x per function.
+    optim_rho: m array with the scale_t per function. The other scale is proportional to scale_t.
     alphas: e x m array with dual coefficients for each kernel interpolant. 
     optim_lmbd: (m, 1) array with optimal regularization per function.
 
@@ -447,7 +447,7 @@ def kernel_parameters_Matern112_2D(X_train, U_train, e):
     e: Number of observed values.
     Returns
     -------
-    optim_rho: 2 x m array with the scale_t and scale_x per function.
+    optim_rho: m array with the scale_t per function. The other scale is proportional to scale_t.
     alphas: e x m array with dual coefficients for each kernel interpolant. 
     optim_lmbd: (m, 1) array with optimal regularization per function.
 
@@ -466,3 +466,32 @@ def kernel_parameters_Matern112_2D(X_train, U_train, e):
         M = G # No nugget
         alphas[:,i] = jnp.linalg.solve(M,U_train[:,i])
     return optim_rho, alphas, optim_lmbd
+
+# Kernel parameters - 2D - Polynomial_2D 
+def kernel_parameters_Polynomial_2D(X_train, U_train, e):
+    '''
+    Parameters
+    ----------
+    X_train: N x d array with collocation points.
+    U_train: N x m array with values of u at X_train.
+    e: Number of observed values.
+    Returns
+    -------
+    optim_rho: 2 x m array with the scale_t and scale_x per function.
+    alphas: e x m array with dual coefficients for each kernel interpolant. 
+    optim_lmbd: (m, 1) array with optimal regularization per function.
+
+    '''
+    m = U_train.shape[1] # Number of functions
+
+    optim_d  = np.zeros(m)
+    optim_lmbd = np.zeros(m)
+    alphas     = np.zeros((e,m))
+    
+    for i in range(m):
+        optim_d[i], optim_lmbd[i] = 2, 0.0 # User input
+        G = K_2D(Polynomial_2D, X_train[e*i:e*(i+1)],X_train[e*i:e*(i+1)], optim_d[i]) 
+        #M = (G + optim_lmbd[i]*jnp.eye(e)) # Using nugget
+        M = G # No nugget
+        alphas[:,i] = jnp.linalg.solve(M,U_train[:,i])
+    return optim_d, alphas, optim_lmbd
