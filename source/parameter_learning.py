@@ -308,7 +308,7 @@ def grid_search_Matern112_2D(x_train,u_train, print_MSE = False):
 
   k = np.linspace(10**-3, 2 , num=k1)
   distances = dist.pdist(x_train) # pairwise distances
-  beta = np.percentile(distances, 50) # median of the pairwise distances
+  beta = np.percentile(distances, 35) # median of the pairwise distances
   # Search space for rho
   rhos = beta*k
   
@@ -460,6 +460,7 @@ def kernel_parameters_Matern112_2D(X_train, U_train, e):
     
     for i in range(m):
         optim_rho[i], optim_lmbd[i] = grid_search_Matern112_2D(X_train[e*i:e*(i+1)], U_train[:,i].reshape(-1,1))
+        #optim_rho[i], optim_lmbd[i] = 0.11, 0.0 # User input
         G = K_2D(Matern_Kernel_112_2D, X_train[e*i:e*(i+1)],X_train[e*i:e*(i+1)],optim_rho[i]) 
         #M = (G + optim_lmbd[i]*jnp.eye(e)) # Using nugget
         M = G # No nugget
