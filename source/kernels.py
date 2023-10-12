@@ -87,7 +87,7 @@ def Matern_Kernel_52_2D(x1,x2,y1,y2,params):
 @jit
 def Matern_Kernel_112_2D(x1,x2,y1,y2,params):
 	rho = params
-	d = jnp.sqrt(((x1-y1)**2 + 10*(x2-y2)**2)+ 1e-8)
+	d = jnp.sqrt(((x1-y1)**2 + 10*(x2-y2)**2))
 	coef = (1 + (jnp.sqrt(11)*d)/(rho) + (4620*(d**2))/((945)*rho**2) + (1155*jnp.sqrt(11)*(d**3))/((945)*rho**3) + (1815*(d**4))/((945)*rho**4) + (121*jnp.sqrt(11)*(d**5))/((945)*rho**5))
 	return coef * jnp.exp(-jnp.sqrt(11)*d/rho) 
 
