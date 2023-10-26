@@ -1,5 +1,6 @@
 import jax.numpy as jnp
 from jax import grad, jacfwd, vmap, jit
+import numpy as np
 
 #	1D 
 
@@ -8,7 +9,7 @@ from jax import grad, jacfwd, vmap, jit
 def Gaussian(t,t_,params):
 	sigma = params
 	r2 = jnp.dot(t-t_,t-t_)
-	return jnp.exp(-r2/(2*sigma**2))
+	return jnp.exp(-r2/(2*np.power(sigma,2)))
 
 # Polynomial Kernel
 
