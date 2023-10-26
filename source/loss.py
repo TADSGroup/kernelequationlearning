@@ -55,10 +55,9 @@ def Kphiphi_Burgers_assembly(X, k = 'Gaussian2D', k_param = 1.):
 
   # No. of collocation points
   N = X.shape[0]
-  # No. of functions
-  m = 1
+  
   # Initialize K(phi,phi)
-  Theta = jnp.zeros((m*N,m*N))
+  Theta = jnp.zeros((3*N,3*N))
 
   # Block 1,1
   val = K_2D(kernel, X,X,k_param)
