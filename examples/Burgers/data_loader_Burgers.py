@@ -6,6 +6,9 @@ from models import *
 
 data = loadmat('/home/juanfelipe/Desktop/research/keql/examples/Burgers/data/burgers.mat')
 
+# Number of functions
+m = 1
+
 # Scaling and get u and its gradients
 # t scaler
 #t_scaler = MinMaxScaler()
@@ -87,6 +90,7 @@ t_test, x_test, u_xx_test = u_xx_test_[:,0], u_xx_test_[:,1], u_xx_test_[:,2]
 e, e_test = len(u_train), len(u_test)
 X_train = np.vstack([t_train, x_train]).T
 X_test = np.vstack([t_test, x_test]).T
+
 
 ###################
 # np.random.seed(9)
