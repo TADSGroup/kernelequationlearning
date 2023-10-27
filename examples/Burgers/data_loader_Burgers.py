@@ -8,7 +8,8 @@ data = loadmat('/home/juanfelipe/Desktop/research/keql/examples/Burgers/data/bur
 
 # Number of functions
 m = 1
-
+# Number of training points
+N = 2000
 # Scaling and get u and its gradients
 # t scaler
 #t_scaler = MinMaxScaler()
@@ -59,7 +60,7 @@ u_xx_all_ = np.vstack([all_pairs,u_xx_all_flat]).T # N x 3 of collocation pts an
 
 # Get random indices
 np.random.seed(9)
-idx_train = np.random.randint(len(u_all_), size = 2000)
+idx_train = np.random.randint(len(u_all_), size = N)
 idx_test = np.random.randint(len(u_all_), size = int(1e4))
 
 
