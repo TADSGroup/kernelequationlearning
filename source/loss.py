@@ -64,26 +64,26 @@ def Kphiphi_Burgers_assembly(X, k = 'Gaussian2D', k_param = 1.):
   Theta = Theta.at[:N, :N].set(jnp.reshape(val, (N, N)))
 
   # Block 1,2
-  val = K_dot2D(kernel, X, X, k_param, 1)
+  val = K_dot2D(kernel, X, X, k_param, 3)
   Theta = Theta.at[:N, N:2*N].set(jnp.reshape(val, (N, N)))
   Theta = Theta.at[N:2*N, :N].set(jnp.transpose(np.reshape(val, (N, N)))) # Block 2,1
 
   # Block 1,3
-  val = K_2dot2D(kernel, X, X, k_param, 1, 1)
+  val = K_2dot2D(kernel, X, X, k_param, 3, 1)
   Theta = Theta.at[:N, 2*N:].set(jnp.reshape(val, (N, N)))
   Theta = Theta.at[2*N:, :N].set(jnp.transpose(np.reshape(val, (N, N)))) # Block 3,1
 
   # Block 2,2
-  val = K_2dot2D(kernel, X, X, k_param, 0, 1)
+  val = K_2dot2D(kernel, X, X, k_param, 1, 3)
   Theta = Theta.at[N:2*N, N:2*N].set(jnp.reshape(val, (N, N)))
   
   # Block 2,3
-  val = K_3dot2D(kernel, X, X, k_param, 0, 1, 1)
+  val = K_3dot2D(kernel, X, X, k_param, 1, 1, 3)
   Theta = Theta.at[N:2*N, 2*N:].set(jnp.reshape(val, (N, N)))
   Theta = Theta.at[2*N:, N:2*N].set(jnp.transpose(np.reshape(val, (N, N)))) # Block 3,2
  
   # Block 3,3
-  val = K_4dot2D(kernel, X , X, k_param, 0, 0, 1, 1)
+  val = K_4dot2D(kernel, X , X, k_param, 1, 1, 3, 3)
   Theta = Theta.at[2*N:, 2*N:].set(jnp.reshape(val, (N, N)))
 
   return Theta
