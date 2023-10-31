@@ -43,19 +43,19 @@ def K(kernel, T, T_, params):
 	return vmap(lambda t: vmap(lambda t_: kernel(t,t_, params))(T_))(T)
 
 def K_dot(kernel, T ,T_, params, arg):
-	K_Dot = jit(grad(kernel,arg))
+	K_Dot = grad(kernel,arg)
 	return vmap(lambda t: vmap(lambda t_: K_Dot(t, t_, params))(T_))(T)
 
 def K_2dot(kernel, T ,T_, params, arg1, arg2):
-	K_2Dot = jit(grad(grad(kernel,arg1),arg2))
+	K_2Dot = grad(grad(kernel,arg1),arg2)
 	return vmap(lambda t: vmap(lambda t_: K_2Dot(t ,t_, params))(T_))(T)
 
 def K_3dot(kernel, T ,T_, params, arg1, arg2, arg3):
-	K_3Dot = jit(grad(grad(grad(kernel,arg1),arg2),arg3))
+	K_3Dot = grad(grad(grad(kernel,arg1),arg2),arg3)
 	return vmap(lambda t: vmap(lambda t_: K_3Dot(t ,t_, params))(T_))(T)
  
 def K_4dot(kernel, T ,T_, params, arg1, arg2, arg3, arg4):
-	K_4Dot = jit(grad(grad(grad(grad(kernel,arg1),arg2),arg3),arg4))
+	K_4Dot = grad(grad(grad(grad(kernel,arg1),arg2),arg3),arg4)
 	return vmap(lambda t: vmap(lambda t_: K_4Dot(t ,t_, params))(T_))(T)
 
 #	2D
