@@ -9,7 +9,7 @@ data = loadmat('/home/juanfelipe/Desktop/research/keql/examples/Burgers/data/bur
 # Number of functions
 m = 1
 # Number of training points
-N = 2000
+N = 1000
 # Scaling and get u and its gradients
 # t scaler
 #t_scaler = MinMaxScaler()
