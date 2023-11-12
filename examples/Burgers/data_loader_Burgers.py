@@ -6,39 +6,37 @@ from models import *
 
 data = loadmat('/home/juanfelipe/Desktop/research/keql/examples/Burgers/data/burgers.mat')
 
+np.random.seed(9)
+
+# Number of training points
+N = 2000
+N_train = 500
+N_test = N
+
 # Number of functions
 m = 1
-# Number of training points
-N = 1000
-# Scaling and get u and its gradients
-# t scaler
-#t_scaler = MinMaxScaler()
+
+# t
 t = data['t']
 t = np.ravel(t)
-#t = np.ravel(t_scaler.fit_transform(t))
-dt = t[1] - t[0]
+dt = t[1] - t[0] # dt
 
-# x scaler
-#x_scaler = MinMaxScaler()
+# x 
 x = data['x'].T
 x = np.ravel(x)
-#x = np.ravel(x_scaler.fit_transform(x))
-dx = x[1] - x[0]
+dx = x[1] - x[0] # dx
 
-# u scaler
-#u_scaler = MinMaxScaler()
+# u
 u = np.real(data['usol']).reshape(-1,1)
-#u = u_scaler.fit_transform(u)
 u = u.reshape(256, 101)
 
-# Plot u and u_dot
-
+# u_t, u_x, u_xx
 u_t = ps.FiniteDifference(axis=1)._differentiate(u, t=dt)
 u_x = ps.FiniteDifference(axis=0, order=4)._differentiate(u, t=dx)
 u_xx = ps.FiniteDifference(axis=0, order=4, d=2)._differentiate(u, t=dx)
 
 
-# Data loader
+# (t,x)-meshgrid
 T, X = np.meshgrid(t,x)
 # N x 2 of all collocation points 
 all_pairs = np.vstack([T.ravel(), X.ravel()]) 
@@ -59,9 +57,8 @@ u_xx_all_ = np.vstack([all_pairs,u_xx_all_flat]).T # N x 3 of collocation pts an
 
 
 # Get random indices
-np.random.seed(9)
-idx_train = np.random.randint(len(u_all_), size = N)
-idx_test = np.random.randint(len(u_all_), size = int(1e4))
+idx_train = np.random.randint(len(u_all_), size = N_train)
+idx_test = np.random.randint(len(u_all_), size = N_test)
 
 
 ## Get training and testing points from triples
@@ -88,6 +85,5 @@ t_train, x_train, u_xx_train = u_xx_train_[:,0], u_xx_train_[:,1], u_xx_train_[:
 t_test, x_test, u_xx_test = u_xx_test_[:,0], u_xx_test_[:,1], u_xx_test_[:,2]
 
 
-e, e_test = len(u_train), len(u_test)
 X_train = np.vstack([t_train, x_train]).T
 X_test = np.vstack([t_test, x_test]).T
