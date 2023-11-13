@@ -57,8 +57,8 @@ u_xx_all_ = np.vstack([all_pairs,u_xx_all_flat]).T # N x 3 of collocation pts an
 
 
 # Get random indices
-idx_train = np.random.randint(len(u_all_), size = N_train)
 idx_test = np.random.randint(len(u_all_), size = N_test)
+idx_train = np.random.choice(idx_test, size = N_train, replace = False)
 
 
 ## Get training and testing points from triples
@@ -87,3 +87,12 @@ t_test, x_test, u_xx_test = u_xx_test_[:,0], u_xx_test_[:,1], u_xx_test_[:,2]
 
 X_train = np.vstack([t_train, x_train]).T
 X_test = np.vstack([t_test, x_test]).T
+
+# # Create a boolean array of size N initialized with False
+M = np.zeros((m, N_test), dtype=bool)
+# # Set the values at specified indices to True
+# idx = []
+# for i in range(m):
+#     index = np.where(np.in1d(X_test,X_train[i]))[0]
+#     idx.append(index)
+#     M[i][index] = True
