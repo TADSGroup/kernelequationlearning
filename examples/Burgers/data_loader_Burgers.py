@@ -9,8 +9,8 @@ data = loadmat('/home/juanfelipe/Desktop/research/keql/examples/Burgers/data/bur
 np.random.seed(9)
 
 # Number of training points
-N = 2000
-N_train = 500
+N = 1000
+N_train = 20
 N_test = N
 
 # Number of functions

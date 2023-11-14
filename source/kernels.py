@@ -9,7 +9,7 @@ import numpy as np
 def Gaussian(t,t_,params):
 	sigma = params
 	r2 = jnp.dot(t-t_,t-t_)
-	return jnp.exp(-r2/(2*np.power(sigma,2)))
+	return jnp.exp(-r2/(2*jnp.power(sigma,2)))
 
 # Polynomial Kernel
 
