@@ -13,7 +13,7 @@ m = 10
 
 # Number of points to be sampled per function: 150 ghost points
 N = 200
-N_train = 50
+N_train = 150
 N_test = N
 
 # t
@@ -31,11 +31,12 @@ T, X = np.meshgrid(t,x)
 # 32000 x 2  
 all_pairs = np.vstack([T.ravel(), X.ravel()]) 
 
-
+# At the grid points
 U = []
 U_t = []
 U_x = []
 U_xx = []
+# At collocation points
 U_train = []
 U_t_train = []
 U_x_train = []
@@ -103,12 +104,12 @@ for i in range(m):
     X_test.append(X_test_c)
 
 
-U_train = np.vstack(U_train)
-U_t_train = np.vstack(U_t_train)
-U_x_train = np.vstack(U_x_train)
-U_xx_train = np.vstack(U_xx_train)
-X_train = np.vstack(X_train)
-X_test = np.vstack(X_test)
+U_train = np.vstack(U_train).reshape(-1,1) # m*N_train x 1
+U_t_train = np.vstack(U_t_train).reshape(-1,1) # m*N_train x 1
+U_x_train = np.vstack(U_x_train).reshape(-1,1) # m*N_train x 1
+U_xx_train = np.vstack(U_xx_train).reshape(-1,1) # m*N_train x 1
+X_train = np.vstack(X_train) # m*N_train x 2
+X_test = np.vstack(X_test) # m*N_test x 2
 
 
 
