@@ -9,11 +9,11 @@ print(data[0,:,:].shape)
 np.random.seed(9)
 
 # Number of functions
-m = 10
+m = 2
 
 # Number of points to be sampled per function: 150 ghost points
 N = 200
-N_train = 150
+N_train = 100
 N_test = N
 
 # t
@@ -44,6 +44,8 @@ U_xx_train = []
 X_train = []
 X_test = []
 
+idx_test = np.random.randint(len(all_pairs[0]), size = N_test)
+
 for i in range(m):
 
     # u
@@ -65,7 +67,6 @@ for i in range(m):
 
 
     # Get random indices
-    idx_test = np.random.randint(len(u_all), size = N_test)
     idx_train = np.random.choice(idx_test, size = N_train, replace = False)
 
 
@@ -104,12 +105,12 @@ for i in range(m):
     X_test.append(X_test_c)
 
 
-U_train = np.vstack(U_train).reshape(-1,1) # m*N_train x 1
-U_t_train = np.vstack(U_t_train).reshape(-1,1) # m*N_train x 1
-U_x_train = np.vstack(U_x_train).reshape(-1,1) # m*N_train x 1
-U_xx_train = np.vstack(U_xx_train).reshape(-1,1) # m*N_train x 1
-X_train = np.vstack(X_train) # m*N_train x 2
-X_test = np.vstack(X_test) # m*N_test x 2
+U_train = np.vstack(U_train).T # (N_train, m)
+U_t_train = np.vstack(U_t_train).T # (N_train, m)
+U_x_train = np.vstack(U_x_train).T # (N_train, m)
+U_xx_train = np.vstack(U_xx_train).T # (N_train, m)
+X_train = np.vstack(X_train) # (m*N_train, 2)
+X_test = np.vstack(X_test) # (m*N_test, 2)
 
 
 

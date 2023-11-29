@@ -29,8 +29,8 @@ def kernel_parameters(X_train, U_train, e):
 
 def kernel_parameters_Gaussian_2D(X_train, U_train, e):
     '''
-    X_train: N x d array with collocation points.
-    U_train: N x m array with values of u at X_train.
+    X_train: N_train x 2 array with collocation points.
+    U_train: N_train x m array with values of u at X_train.
     e: Number of observed values.
     '''
     m = U_train.shape[1] # Number of functions
