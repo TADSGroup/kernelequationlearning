@@ -9,11 +9,11 @@ print(data[0,:,:].shape)
 np.random.seed(9)
 
 # Number of functions
-m = 2
+m = 3
 
 # Number of points to be sampled per function: 150 ghost points
-N = 200
-N_train = 100
+N = 300
+N_train = 200
 N_test = N
 
 # t
@@ -42,7 +42,13 @@ U_t_train = []
 U_x_train = []
 U_xx_train = []
 X_train = []
+# At ghost + training points
+U_test = []
+U_t_test = []
+U_x_test = []
+U_xx_test = []
 X_test = []
+
 
 idx_test = np.random.randint(len(all_pairs[0]), size = N_test)
 
@@ -78,25 +84,28 @@ for i in range(m):
     t_train, x_train, u_train = u_train_[:,0], u_train_[:,1], u_train_[:,2]
     t_test, x_test, u_test = u_test_[:,0], u_test_[:,1], u_test_[:,2]
     U_train.append(u_train)
+    U_test.append(u_test)
     # u_t
     u_t_train_ = u_t_all[idx_train,:]
     u_t_test_ = u_t_all[idx_test,:]
     t_train, x_train, u_t_train = u_t_train_[:,0], u_t_train_[:,1], u_t_train_[:,2]
     t_test, x_test, u_t_test = u_t_test_[:,0], u_t_test_[:,1], u_t_test_[:,2]
     U_t_train.append(u_t_train)
+    U_t_test.append(u_t_test)
     # u_x
     u_x_train_ = u_x_all[idx_train,:]
     u_x_test_ = u_x_all[idx_test,:]
     t_train, x_train, u_x_train = u_x_train_[:,0], u_x_train_[:,1], u_x_train_[:,2]
     t_test, x_test, u_x_test = u_x_test_[:,0], u_x_test_[:,1], u_x_test_[:,2]
     U_x_train.append(u_x_train)
+    U_x_test.append(u_x_test)
     # u_xx
     u_xx_train_ = u_xx_all[idx_train,:]
     u_xx_test_ = u_xx_all[idx_test,:]
     t_train, x_train, u_xx_train = u_xx_train_[:,0], u_xx_train_[:,1], u_xx_train_[:,2]
     t_test, x_test, u_xx_test = u_xx_test_[:,0], u_xx_test_[:,1], u_xx_test_[:,2]
     U_xx_train.append(u_xx_train)
-
+    U_xx_test.append(u_xx_test)
     # Training
     X_train_c = np.vstack([t_train, x_train]).T
     X_train.append(X_train_c)
@@ -105,11 +114,17 @@ for i in range(m):
     X_test.append(X_test_c)
 
 
+# At collocation points
 U_train = np.vstack(U_train).T # (N_train, m)
 U_t_train = np.vstack(U_t_train).T # (N_train, m)
 U_x_train = np.vstack(U_x_train).T # (N_train, m)
 U_xx_train = np.vstack(U_xx_train).T # (N_train, m)
 X_train = np.vstack(X_train) # (m*N_train, 2)
+# At ghost + collocation points
+U_test = np.vstack(U_test).T # (N_train, m)
+U_t_test = np.vstack(U_test) # (N_train, m)
+U_x_test = np.vstack(U_test) # (N_train, m)
+U_xx_test = np.vstack(U_test) # (N_train, m)
 X_test = np.vstack(X_test) # (m*N_test, 2)
 
 
