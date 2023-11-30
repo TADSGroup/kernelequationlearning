@@ -13,7 +13,7 @@ m = 3
 
 # Number of points to be sampled per function: 150 ghost points
 N = 300
-N_train = 200
+N_train = 20
 N_test = N
 
 # t
@@ -122,9 +122,9 @@ U_xx_train = np.vstack(U_xx_train).T # (N_train, m)
 X_train = np.vstack(X_train) # (m*N_train, 2)
 # At ghost + collocation points
 U_test = np.vstack(U_test).T # (N_train, m)
-U_t_test = np.vstack(U_test) # (N_train, m)
-U_x_test = np.vstack(U_test) # (N_train, m)
-U_xx_test = np.vstack(U_test) # (N_train, m)
+U_t_test = np.vstack(U_t_test).T # (N_train, m)
+U_x_test = np.vstack(U_x_test).T # (N_train, m)
+U_xx_test = np.vstack(U_xx_test).T # (N_train, m)
 X_test = np.vstack(X_test) # (m*N_test, 2)
 
 
