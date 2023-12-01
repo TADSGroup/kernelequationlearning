@@ -15,21 +15,30 @@ m = 3
 N = 300
 N_train = 20
 N_test = N
+N_ghost = 256
 
 # t
 L_t = 8
 dt = 0.025
 N_t = int(L_t/dt)
 t = np.linspace(0, L_t, N_t)
+idx_t_ghost = np.round(np.linspace(0,len(t)-1, int(np.sqrt(N_ghost)))).astype(int)
+t_ghost = t[idx_t_ghost]
 # x
 L_x = 10 
 dx = 0.1 
 N_x = int(L_x/dx)
 x = np.linspace(0,L_x,N_x)
-# (t,x)-meshgrid
+idx_x_ghost = np.round(np.linspace(0,len(x)-1, int(np.sqrt(N_ghost)))).astype(int)
+x_ghost = x[idx_x_ghost]
+# (t,x)- full meshgrid
 T, X = np.meshgrid(t,x)
-# 32000 x 2  
-all_pairs = np.vstack([T.ravel(), X.ravel()]) 
+# (t,x)- ghost meshgrid
+T_ghost, X_ghost = np.meshgrid(t_ghost,x_ghost)
+# (32000, 2)
+all_pairs = np.vstack([T.ravel(), X.ravel()])
+# (256, 2)
+all_pairs_ghost = np.vstack([T_ghost.ravel(), X_ghost.ravel()]) 
 
 # At the grid points
 U = []
@@ -50,6 +59,7 @@ U_xx_test = []
 X_test = []
 
 
+#idx_test = np.random.randint(len(all_pairs[0]), size = N_test)
 idx_test = np.random.randint(len(all_pairs[0]), size = N_test)
 
 for i in range(m):
@@ -58,7 +68,7 @@ for i in range(m):
     u = data[i,:,:]
     U.append(u)
     # u_t, u_x, u_xx
-    u_t = ps.FiniteDifference(axis=1)._differentiate(u, t=dt)
+    u_t = ps.FiniteDifference(axis=1, order=4)._differentiate(u, t=dt)
     U_t.append(u_t)
     u_x = ps.FiniteDifference(axis=0, order=4)._differentiate(u, t=dx)
     U_x.append(u_x)
