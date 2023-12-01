@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.io import loadmat
 import pysindy as ps
-#from models import *
+from models import *
 
 
 data = np.load('/home/juanfelipe/Desktop/research/keql/examples/Burgers/gen_data/sols_burgers.npy')
@@ -20,7 +20,7 @@ N_gh_tr = N_t_gh_tr*N_x_gh_tr
 N_t_tr, N_x_tr = 20, 20
 N_tr = N_t_tr*N_x_tr
 # Testing (te): Randomly sampled from Supergrid \ Ghost_training. Same per function
-N_t_te, N_x_te = 10, 10
+N_t_te, N_x_te = 20, 20
 N_te = N_t_te*N_x_te
 
 
@@ -29,7 +29,7 @@ L_t = 8
 dt = 0.025
 N_t = int(L_t/dt)
 t = np.linspace(0, L_t, N_t) # (320,)
-idx_t_gh_tr = np.round(np.linspace(0,len(t)-1, int(np.sqrt(N_gh_tr)))).astype(int)
+idx_t_gh_tr = np.round(np.linspace(0,len(t)-1, int(N_t_gh_tr))).astype(int)
 t_gh_tr = t[idx_t_gh_tr] # (N_t_gh_tr,)
 idx_t_te = np.random.choice(np.setdiff1d(np.arange(t.size),idx_t_gh_tr), size = N_t_te, replace = False)
 t_te = np.sort(t[idx_t_te]) # (N_t_te,)
@@ -39,7 +39,7 @@ L_x = 10
 dx = 0.1 
 N_x = int(L_x/dx)
 x = np.linspace(0,L_x,N_x) # (100,)
-idx_x_gh_tr = np.round(np.linspace(0,len(x)-1, int(np.sqrt(N_gh_tr)))).astype(int)
+idx_x_gh_tr = np.round(np.linspace(0,len(x)-1, int(N_x_gh_tr))).astype(int)
 x_gh_tr = x[idx_x_gh_tr] # (N_x_gh_tr,)
 idx_x_te = np.random.choice(np.setdiff1d(np.arange(x.size),idx_x_gh_tr), size = N_x_te, replace = False)
 x_te = np.sort(x[idx_x_te]) # (N_x_te,)
@@ -53,9 +53,6 @@ pairs_gh_tr = np.vstack([TT_gh_tr.ravel(), XX_gh_tr.ravel()]) # (2, N_gh_tr)
 # (t,x)- te meshgrid
 TT_te, XX_te = np.meshgrid(t_te,x_te) # (N_t_te, N_x_te) , (N_t_te, N_x_te)
 pairs_te = np.vstack([TT_te.ravel(), XX_te.ravel()]) # (2, N_te)
-
-
-np.random.seed(2023)
 
 # Initialize arrays
 # U

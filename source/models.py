@@ -187,3 +187,63 @@ def predictions_Burgers(X, X_train, kernel, optim_rho, alphas, N_train, N_test):
         u_xx_pred[:,i] = jnp.dot(K_2dot2D(kernel, X[i*N:(i+1)*N,:], X_train[i*N_train:(i+1)*N_train,:], optim_rho[i], 1, 1), alphas[:,i])
     
     return u_pred, u_t_pred, u_x_pred, u_xx_pred 
+
+def predictions_Burgers_tr(X_tr, kernel, optim_rho, alphas, N_tr):
+    '''
+    Parameters
+    ----------
+    X_tr: (m*N_tr,2) array with collocation points.
+    kernel: Kernel chosen from the available 2D kernels in kernels.py
+    optim_rho: (m,) array with the list of nuggets of m functions.
+    alphas: (N_train, m) array with the list of dual coefficients of m functions.
+    Returns
+    -------
+    u_pred: (N_test, m) array of the predictions at X of m functions.
+    u_t_pred: (N_test, m) array of the predictions of t derivative at X of m functions.
+    u_x_pred: (N_test, m) array of the predictions of x derivative at X of m functions.
+    u_x_pred: (N_test, m) array of the predictions of xx derivative at X of m functions.
+    '''
+    m = len(optim_rho)
+    N = N_tr
+
+    u_pred_tr    = np.zeros((N,m))
+    u_x_pred_tr  = np.zeros((N,m))
+    u_t_pred_tr  = np.zeros((N,m))
+    u_xx_pred_tr = np.zeros((N,m))
+    for i in range(m):
+        u_pred_tr[:,i]    = jnp.dot(K_2D(kernel, X_tr[i*N:(i+1)*N,:], X_tr[i*N:(i+1)*N,:], optim_rho[i]), alphas[:,i])
+        u_t_pred_tr[:,i]  = jnp.dot(K_dot2D(kernel, X_tr[i*N:(i+1)*N,:], X_tr[i*N:(i+1)*N,:], optim_rho[i], 0), alphas[:,i])
+        u_x_pred_tr[:,i]  = jnp.dot(K_dot2D(kernel, X_tr[i*N:(i+1)*N,:], X_tr[i*N:(i+1)*N,:], optim_rho[i], 1), alphas[:,i])
+        u_xx_pred_tr[:,i] = jnp.dot(K_2dot2D(kernel, X_tr[i*N:(i+1)*N,:], X_tr[i*N:(i+1)*N,:], optim_rho[i], 1, 1), alphas[:,i])
+    
+    return u_pred_tr, u_t_pred_tr, u_x_pred_tr, u_xx_pred_tr 
+
+def predictions_Burgers_te(X_te, X_tr, kernel, optim_rho, alphas, N_tr, N_te):
+    '''
+    Parameters
+    ----------
+    X_te: (m*N_te,2) array with collocation points.
+    kernel: Kernel chosen from the available 2D kernels in kernels.py
+    optim_rho: (m,) array with the list of nuggets of m functions.
+    alphas: (N_train, m) array with the list of dual coefficients of m functions.
+    Returns
+    -------
+    u_pred: (N_test, m) array of the predictions at X of m functions.
+    u_t_pred: (N_test, m) array of the predictions of t derivative at X of m functions.
+    u_x_pred: (N_test, m) array of the predictions of x derivative at X of m functions.
+    u_x_pred: (N_test, m) array of the predictions of xx derivative at X of m functions.
+    '''
+    m = len(optim_rho)
+    N = N_te
+
+    u_pred_te    = np.zeros((N,m))
+    u_x_pred_te  = np.zeros((N,m))
+    u_t_pred_te  = np.zeros((N,m))
+    u_xx_pred_te = np.zeros((N,m))
+    for i in range(m):
+        u_pred_te[:,i]    = jnp.dot(K_2D(kernel, X_te[i*N:(i+1)*N,:], X_tr[i*N_tr:(i+1)*N_tr,:], optim_rho[i]), alphas[:,i])
+        u_t_pred_te[:,i]  = jnp.dot(K_dot2D(kernel, X_te[i*N:(i+1)*N,:], X_tr[i*N_tr:(i+1)*N_tr,:], optim_rho[i], 0), alphas[:,i])
+        u_x_pred_te[:,i]  = jnp.dot(K_dot2D(kernel, X_te[i*N:(i+1)*N,:], X_tr[i*N_tr:(i+1)*N_tr,:], optim_rho[i], 1), alphas[:,i])
+        u_xx_pred_te[:,i] = jnp.dot(K_2dot2D(kernel, X_te[i*N:(i+1)*N,:], X_tr[i*N_tr:(i+1)*N_tr,:], optim_rho[i], 1, 1), alphas[:,i])
+    
+    return u_pred_te, u_t_pred_te, u_x_pred_te, u_xx_pred_te
