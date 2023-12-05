@@ -13,6 +13,9 @@ m = 2
 
 # Number of points to be sampled per function
 
+# Interpolation (in): Uniformly sampled points in [0,8]x[0,10]
+N_in = 100000
+
 # Ghost (gh): Uniform grid. Same per function.
 N_t_gh, N_x_gh = 40, 40
 N_gh = N_t_gh*N_x_gh
@@ -46,13 +49,18 @@ x_gh = x[idx_x_gh] # (N_x_gh,)
 # (t,x)- full meshgrid
 TT, XX = np.meshgrid(t,x) # (100,320) , (100,320)
 pairs = np.vstack([TT.ravel(), XX.ravel()]) # (2, 32000)
-# (t,x)- gh_tr meshgrid
+# (t,x)- gh meshgrid
 TT_gh, XX_gh = np.meshgrid(t_gh,x_gh) # (N_t_gh, N_x_gh) , (N_t_gh, N_x_gh)
 pairs_gh = np.vstack([TT_gh.ravel(), XX_gh.ravel()]).T # (N_gh, 2)
 
 # (t,x)- te meshgrid
 # TT_te, XX_te = np.meshgrid(t_te,x_te) # (N_t_te, N_x_te) , (N_t_te, N_x_te)
 # pairs_te = np.vstack([TT_te.ravel(), XX_te.ravel()]) # (2, N_te)
+
+# (t,x)-in grid
+pairs_in = np.zeros([N_in,2])
+pairs_in[:,0] = np.random.uniform(low = 0, high = 8, size = N_in) # t
+pairs_in[:,1] = np.random.uniform(low = 0, high = 10, size = N_in) # x
 
 # Initialize arrays
 # U
