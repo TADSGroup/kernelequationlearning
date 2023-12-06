@@ -2,6 +2,7 @@ import numpy as np
 from scipy.io import loadmat
 import pysindy as ps
 from models import *
+from scipy import interpolate
 
 
 data = np.load('/home/juanfelipe/Desktop/research/keql/examples/Burgers/gen_data/sols_burgers.npy')
@@ -21,10 +22,10 @@ N_t_gh, N_x_gh = 40, 40
 N_gh = N_t_gh*N_x_gh
 
 # Testing (te): Randomly sampled from Supergrid \ Ghost_training. Same per function
-# N_t_te, N_x_te = 20, 20
-# N_te = N_t_te*N_x_te
+N_t_te, N_x_te = 20, 20
+N_te = N_t_te*N_x_te
 
-N_tr = 50
+N_tr = 500
 
 # t
 L_t = 8
@@ -33,8 +34,8 @@ N_t = int(L_t/dt)
 t = np.linspace(0, L_t, N_t) # (320,)
 idx_t_gh = np.round(np.linspace(0,len(t)-1, int(N_t_gh))).astype(int)
 t_gh = t[idx_t_gh] # (N_t_gh,)
-# idx_t_te = np.random.choice(np.setdiff1d(np.arange(t.size),idx_t_gh_tr), size = N_t_te, replace = False)
-# t_te = np.sort(t[idx_t_te]) # (N_t_te,) 
+idx_t_te = np.round(np.linspace(0,len(t)-1, int(N_t_te))).astype(int)
+t_te = np.sort(t[idx_t_te]) # (N_t_te,) 
 
 # x
 L_x = 10 
@@ -43,8 +44,8 @@ N_x = int(L_x/dx)
 x = np.linspace(0,L_x,N_x) # (100,) 
 idx_x_gh = np.round(np.linspace(0,len(x)-1, int(N_x_gh))).astype(int)
 x_gh = x[idx_x_gh] # (N_x_gh,) 
-# idx_x_te = np.random.choice(np.setdiff1d(np.arange(x.size),idx_x_gh_tr), size = N_x_te, replace = False)
-# x_te = np.sort(x[idx_x_te]) # (N_x_te,) 
+idx_x_te = np.round(np.linspace(0,len(x)-1, int(N_x_te))).astype(int)
+x_te = np.sort(x[idx_x_te]) # (N_x_te,) 
 
 # (t,x)- full meshgrid
 TT, XX = np.meshgrid(t,x) # (100,320) , (100,320)
@@ -65,7 +66,7 @@ pairs_in[:,1] = np.random.uniform(low = 0, high = 10, size = N_in) # x
 # Initialize arrays
 # U
 U = []
-U_gh_tr = []
+U_gh = []
 U_tr = []
 U_te = []
 # U_t
@@ -90,14 +91,30 @@ X_tr = []
 X_te = []
 
 for i in range(m):
-
+    # u - (100, 320)
+    u = data[i,:,:]
+    U.append(u.flatten())
+    # Ghost points
+    u_gh = u[np.ix_(idx_x_gh, idx_t_gh)]
+    U_gh.append(u_gh)
+    triples_gh = np.vstack([TT_gh.ravel(), XX_gh.ravel(), u_gh.flatten()]).T # (N_gh, 3)
+    # Interpolation points
+    u_in = interpolate.griddata(points = pairs_gh, values = u_gh.flatten(), xi = pairs_in)
+    triples_in = np.vstack([pairs_in[:,0], pairs_in[:,1], u_in]).T # (N_in, 3)
     # Training(collocation) points
     # Pairs of tr
-    pairs_tr = pairs_gh[np.random.choice(pairs_gh.shape[0], N_tr, replace=False), :]
+    idx_tr = np.random.choice(np.arange(triples_in.shape[0]), size = N_tr, replace = False) 
+    triples_tr = triples_in[idx_tr,:] # (N_tr, 3)
+    pairs_tr = triples_in[idx_tr,0:2] # (N_tr, 2)
+    X_tr.append(pairs_tr) 
+    u_tr = triples_tr[:,2] # (N_tr, ) 
+    U_tr.append(u_tr) 
 
 
-#     # u - (100, 320)
-#     u = data[i,:,:]
+
+
+
+
 #     U.append(u.flatten())
 #     # u_gh_tr - (N_t_gh_tr, N_x_gh_tr) 
 #     u_gh_tr = u[np.ix_(idx_x_gh_tr, idx_t_gh_tr)]
