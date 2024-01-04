@@ -16,6 +16,7 @@ m = 2
 
 # Interpolation (in): Uniformly sampled points in [0,8]x[0,10]
 N_in = 100000
+N_t_in, N_x_in = 100, 1000
 
 # Ghost (gh): Uniform grid. Same per function.
 N_t_gh, N_x_gh = 40, 40
@@ -53,12 +54,11 @@ pairs = np.vstack([TT.ravel(), XX.ravel()]) # (2, 32000)
 # (t,x)- gh meshgrid
 TT_gh, XX_gh = np.meshgrid(t_gh,x_gh) # (N_t_gh, N_x_gh) , (N_t_gh, N_x_gh)
 pairs_gh = np.vstack([TT_gh.ravel(), XX_gh.ravel()]).T # (N_gh, 2)
-
 # (t,x)- te meshgrid
-# TT_te, XX_te = np.meshgrid(t_te,x_te) # (N_t_te, N_x_te) , (N_t_te, N_x_te)
-# pairs_te = np.vstack([TT_te.ravel(), XX_te.ravel()]) # (2, N_te)
+TT_te, XX_te = np.meshgrid(t_te,x_te) # (N_t_te, N_x_te) , (N_t_te, N_x_te)
+pairs_te = np.vstack([TT_te.ravel(), XX_te.ravel()]) # (2, N_te)
 
-# (t,x)-in grid
+# (t,x)- in grid
 pairs_in = np.zeros([N_in,2])
 pairs_in[:,0] = np.random.uniform(low = 0, high = 8, size = N_in) # t
 pairs_in[:,1] = np.random.uniform(low = 0, high = 10, size = N_in) # x
@@ -71,12 +71,12 @@ U_tr = []
 U_te = []
 # U_t
 U_t = []
-U_t_gh_tr = []
+U_t_gh = []
 U_t_tr = []
 U_t_te = []
 # U_x
 U_x = []
-U_x_gh_tr = []
+U_x_gh = []
 U_x_tr = []
 U_x_te = []
 # U_xx
@@ -86,7 +86,7 @@ U_xx_tr = []
 U_xx_te = []
 # X
 X = []
-X_gh_tr = []
+X_gh = []
 X_tr = []
 X_te = []
 
@@ -96,20 +96,31 @@ for i in range(m):
     U.append(u.flatten())
     # Ghost points
     u_gh = u[np.ix_(idx_x_gh, idx_t_gh)]
-    U_gh.append(u_gh)
+    U_gh.append(u_gh) 
     triples_gh = np.vstack([TT_gh.ravel(), XX_gh.ravel(), u_gh.flatten()]).T # (N_gh, 3)
+    pairs_gh = triples_gh[:, 0:2] # (N_gh, 2)
+    X_gh.append(pairs_gh) 
     # Interpolation points
     u_in = interpolate.griddata(points = pairs_gh, values = u_gh.flatten(), xi = pairs_in)
     triples_in = np.vstack([pairs_in[:,0], pairs_in[:,1], u_in]).T # (N_in, 3)
     # Training(collocation) points
-    # Pairs of tr
     idx_tr = np.random.choice(np.arange(triples_in.shape[0]), size = N_tr, replace = False) 
     triples_tr = triples_in[idx_tr,:] # (N_tr, 3)
     pairs_tr = triples_in[idx_tr,0:2] # (N_tr, 2)
     X_tr.append(pairs_tr) 
     u_tr = triples_tr[:,2] # (N_tr, ) 
-    U_tr.append(u_tr) 
+    U_tr.append(u_tr)
+    # Testing points
+    u_te = u[np.ix_(idx_x_te, idx_t_te)]
+    U_te.append(u_te.flatten())
+    triples_te = np.vstack([TT_te.ravel(), XX_te.ravel(), u_te.flatten()]).T # (N_te, 3)
+    pairs_te = triples_te[:, 0:2] # (N_te, 2)
+    X_te.append(pairs_te)
 
+    u_t = ps.FiniteDifference(axis=1, order=10)._differentiate(u_in.reshape(N_t_in, N_x_in), t=dt)
+    U_t.append(u_t)
+    u_t_gh = u_t.reshape(N_t_in, N_x_in)[np.ix_(idx_x_gh, idx_t_gh)]
+    U_t_gh.append(u_t_gh.T.flatten())
 
 
 
