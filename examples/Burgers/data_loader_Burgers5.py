@@ -113,7 +113,7 @@ for i in range(m):
     # u_tr - (N_t_tr, N_x_tr) 
     #u_tr = u[np.ix_(idx_x_tr, idx_t_tr)]
     u_tr = triples_gh_tr[idx_tr,:][:,-1].reshape(N_t_tr, N_x_tr)
-    U_tr.append(u_tr)
+    U_tr.append(u_tr.flatten())
     # u_te - (N_t_te, N_x_te) 
     u_te = u[np.ix_(idx_x_te, idx_t_te)]
     U_te.append(u_te.flatten())
