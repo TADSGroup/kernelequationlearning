@@ -31,8 +31,8 @@ N_t = int(L_t/dt)
 t = np.linspace(0, L_t, N_t) # (320,)
 idx_t_gh_tr = np.round(np.linspace(0,len(t)-1, int(N_t_gh_tr))).astype(int)
 t_gh_tr = t[idx_t_gh_tr] # (N_t_gh_tr,)
-idx_t_te = np.random.choice(np.setdiff1d(np.arange(t.size),idx_t_gh_tr), size = N_t_te, replace = False)
-t_te = np.sort(t[idx_t_te]) # (N_t_te,)
+idx_t_te = np.round(np.linspace(0,len(t)-1, int(N_t_te))).astype(int)
+t_te = t[idx_t_te] # (N_t_te,)
 
 # x
 L_x = 10 
@@ -41,8 +41,8 @@ N_x = int(L_x/dx)
 x = np.linspace(0,L_x,N_x) # (100,)
 idx_x_gh_tr = np.round(np.linspace(0,len(x)-1, int(N_x_gh_tr))).astype(int)
 x_gh_tr = x[idx_x_gh_tr] # (N_x_gh_tr,)
-idx_x_te = np.random.choice(np.setdiff1d(np.arange(x.size),idx_x_gh_tr), size = N_x_te, replace = False)
-x_te = np.sort(x[idx_x_te]) # (N_x_te,)
+idx_x_te = np.round(np.linspace(0,len(x)-1, int(N_x_te))).astype(int)
+x_te = x[idx_x_te] # (N_x_te,)
 
 # Size of the grid
 N = N_t*N_x
@@ -111,7 +111,6 @@ for i in range(m):
     triples_gh_tr = np.vstack([pairs_gh_tr,u_gh_tr.flatten()]).T # (N_gh_tr, 3)
     U_gh_tr.append(u_gh_tr.flatten())
     # u_tr - (N_t_tr, N_x_tr) 
-    #u_tr = u[np.ix_(idx_x_tr, idx_t_tr)]
     u_tr = triples_gh_tr[idx_tr,:][:,-1].reshape(N_t_tr, N_x_tr)
     U_tr.append(u_tr.flatten())
     # u_te - (N_t_te, N_x_te) 
@@ -123,9 +122,10 @@ for i in range(m):
     U_t.append(u_t.flatten())
     # u_t_gh_tr - (N_t_gh_tr, N_x_gh_tr)
     u_t_gh_tr = u_t[np.ix_(idx_x_gh_tr, idx_t_gh_tr)]
+    triples_t_gh_tr = np.vstack([pairs_gh_tr,u_t_gh_tr.flatten()]).T # (N_gh_tr, 3)
     U_t_gh_tr.append(u_t_gh_tr.flatten())
     # u_t_tr - (N_t_tr, N_x_tr) 
-    u_t_tr = u_t[np.ix_(idx_x_tr, idx_t_tr)]    
+    u_t_tr = triples_t_gh_tr[idx_tr,:][:,-1].reshape(N_t_tr, N_x_tr)    
     U_t_tr.append(u_t_tr.flatten())
     # u_t_te - (N_t_te, N_x_te) 
     u_t_te = u_t[np.ix_(idx_x_te, idx_t_te)]
@@ -136,9 +136,10 @@ for i in range(m):
     U_x.append(u_x.flatten())
     # u_x_gh_tr - (N_t_gh_tr, N_x_gh_tr)
     u_x_gh_tr = u_x[np.ix_(idx_x_gh_tr, idx_t_gh_tr)]
+    triples_x_gh_tr = np.vstack([pairs_gh_tr,u_x_gh_tr.flatten()]).T # (N_gh_tr, 3)
     U_x_gh_tr.append(u_x_gh_tr.flatten())
     # u_x_tr - (N_t_tr, N_x_tr) 
-    u_x_tr = u_x[np.ix_(idx_x_tr, idx_t_tr)]    
+    u_x_tr = triples_x_gh_tr[idx_tr,:][:,-1].reshape(N_t_tr, N_x_tr)    
     U_x_tr.append(u_x_tr.flatten())
     # u_x_te - (N_t_te, N_x_te) 
     u_x_te = u_x[np.ix_(idx_x_te, idx_t_te)]
@@ -149,9 +150,10 @@ for i in range(m):
     U_xx.append(u_xx.flatten())
     # u_xx_gh_tr - (N_t_gh_tr, N_x_gh_tr)
     u_xx_gh_tr = u_xx[np.ix_(idx_x_gh_tr, idx_t_gh_tr)]
+    triples_xx_gh_tr = np.vstack([pairs_gh_tr,u_xx_gh_tr.flatten()]).T # (N_gh_tr, 3)
     U_xx_gh_tr.append(u_xx_gh_tr.flatten())
     # u_xx_tr - (N_t_tr, N_x_tr) 
-    u_xx_tr = u_xx[np.ix_(idx_x_tr, idx_t_tr)]    
+    u_xx_tr = triples_xx_gh_tr[idx_tr,:][:,-1].reshape(N_t_tr, N_x_tr)    
     U_xx_tr.append(u_xx_tr.flatten())
     # u_xx_te - (N_t_te, N_x_te) 
     u_xx_te = u_xx[np.ix_(idx_x_te, idx_t_te)]
