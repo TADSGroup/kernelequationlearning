@@ -9,7 +9,7 @@ print(data[0,:,:].shape)
 np.random.seed(9)
 
 # Number of functions
-m = 2
+m = 3
 
 # Number of points to be sampled per function
 
@@ -17,7 +17,7 @@ m = 2
 N_t_gh_tr, N_x_gh_tr = 40, 40
 N_gh_tr = N_t_gh_tr*N_x_gh_tr
 # Training (tr): Randomly sampled from Ghost_training. Different per function.
-N_t_tr, N_x_tr = 30, 30
+N_t_tr, N_x_tr = 20, 20
 N_tr = N_t_tr*N_x_tr
 # Testing (te): Randomly sampled from Supergrid \ Ghost_training. Same per function
 N_t_te, N_x_te = 20, 20
