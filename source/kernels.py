@@ -73,11 +73,13 @@ def Anisotropic_Gaussian_2D(x1,x2,y1,y2,params):
 	r = ((x1-y1)/scale_t)**2+((x2-y2)/scale_x)**2
 	return jnp.exp(-r)
 
-# def Matern_Kernel_2_2D(x1,x2,y1,y2,params):
+# @jit
+# def Matern_Kernel_52_2D(x1,x2,y1,y2,params):
 # 	rho, sigma = params
-# 	d = jnp.sqrt(((x1-y1)**2 + (x2-y2)**2))
+# 	d = jnp.sqrt(((x1-y1)**2 + (x2-y2)**2) + 1e-8)
 # 	coef = sigma**2 * (1 + (jnp.sqrt(5)*d/rho) + (5*d**2/3*rho**2))
 # 	return coef * jnp.exp(-jnp.sqrt(5)*d/rho)
+
 @jit
 def Matern_Kernel_52_2D(x1,x2,y1,y2,params):
 	rho = params
