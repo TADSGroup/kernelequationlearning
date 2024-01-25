@@ -17,7 +17,7 @@ m = 3
 N_t_gh_tr, N_x_gh_tr = 20, 20
 N_gh_tr = N_t_gh_tr*N_x_gh_tr
 # Training (tr): Randomly sampled from Ghost_training. Different per function.
-N_t_tr, N_x_tr = 10, 10
+N_t_tr, N_x_tr = 5, 5
 N_tr = N_t_tr*N_x_tr
 # Testing (te): Randomly sampled from Supergrid \ Ghost_training. Same per function
 N_t_te, N_x_te = 20, 20
