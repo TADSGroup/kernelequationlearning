@@ -104,6 +104,24 @@ def Polynomial_2D(x1,x2,y1,y2,params):
 	d = params
 	return (x1*y1 + x2*y2)**d
 
+# ND
+
+def polynomial_kernel2(x, y, degree=2, constant=1.0):
+    """
+    Polynomial kernel function.
+
+    Parameters:
+    - x: Input vector x.
+    - y: Input vector y.
+    - degree: Degree of the polynomial kernel.
+    - constant: Constant term in the polynomial kernel.
+
+    Returns:
+    - Result of the polynomial kernel applied to x and y.
+    """
+    return (np.dot(x, y) + constant)**degree
+
+
 # Kernel matrices
 def K_2D(kernel, T,T_, params):
   return vmap(lambda t: vmap(lambda t_: kernel(t[0],t[1], t_[0],t_[1], params))(T_))(T)

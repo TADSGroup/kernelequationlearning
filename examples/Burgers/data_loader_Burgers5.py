@@ -9,7 +9,7 @@ print(data[0,:,:].shape)
 np.random.seed(9)
 
 # Number of functions
-m = 3
+m = 2
 
 # Number of points to be sampled per function
 
@@ -84,7 +84,7 @@ X_gh_tr = []
 X_tr = []
 X_te = []
 
-for i in range(m):
+for i in range(1,m+1):
 
     # Training(collocation) points
     # t
