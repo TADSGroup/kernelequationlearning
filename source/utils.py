@@ -1,6 +1,8 @@
 import jax.numpy as jnp
 import numpy as np
 
+
+
 class MinMaxScaler:
     def __init__(self, feature_range=(0, 1)):
         self.feature_range = feature_range
@@ -17,6 +19,20 @@ class MinMaxScaler:
 
     def inverse_transform(self, X_scaled):
         return (X_scaled - self.min_) / self.scale_
+def rel_mse(true, pred, root = False):
+
+    '''
+    true: Array of ground truth. 
+    pred: Array of predictions. 
+    root: If True, it computes the relative root mse.  
+    '''
+    n = len(true)
+    num = np.sum(np.square(true - pred)) / n
+    den = np.sum(np.square(true))
+    error = num/den
+    if root:
+        error = np.sqrt(error)
+    return error
 
 def needed_regularity_Matern(k,d):
   """
