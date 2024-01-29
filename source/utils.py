@@ -19,15 +19,14 @@ class MinMaxScaler:
 
     def inverse_transform(self, X_scaled):
         return (X_scaled - self.min_) / self.scale_
-def rel_mse(true, pred, root = False):
+def rel_mse(true, pred, root = True):
 
     '''
     true: Array of ground truth. 
     pred: Array of predictions. 
     root: If True, it computes the relative root mse.  
     '''
-    n = len(true)
-    num = np.sum(np.square(true - pred)) / n
+    num = np.sum(np.square(true - pred))
     den = np.sum(np.square(true))
     error = num/den
     if root:
