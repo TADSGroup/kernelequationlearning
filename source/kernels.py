@@ -119,7 +119,7 @@ def polynomial_kernel2(x, y, degree=2, constant=1.0):
     Returns:
     - Result of the polynomial kernel applied to x and y.
     """
-    return (np.dot(x, y) + constant)**degree
+    return (jnp.dot(x, y) + constant)**degree
 
 
 # Kernel matrices
