@@ -190,7 +190,7 @@ X_te = np.vstack(X_te) # (m*N_te,2)
 
 
 # Create a boolean array of size N initialized with False
-M = np.zeros((m, N_gh_tr), dtype=bool)
+M = np.zeros((N_gh_tr,m), dtype=bool)
 # Set the values at specified indices to True
 # idx = []
 # for i in range(m):
