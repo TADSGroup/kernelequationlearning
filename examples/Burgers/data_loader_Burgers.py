@@ -14,10 +14,10 @@ m = 2
 # Number of points to be sampled per function
 
 # Ghost_training (gh_tr): Uniform grid. Same per function.
-N_t_gh_tr, N_x_gh_tr = 20, 20
+N_t_gh_tr, N_x_gh_tr = 10, 10
 N_gh_tr = N_t_gh_tr*N_x_gh_tr
 # Training (tr): Randomly sampled from Ghost_training. Different per function.
-N_t_tr, N_x_tr = 5, 5
+N_t_tr, N_x_tr = 4, 4
 N_tr = N_t_tr*N_x_tr
 # Testing (te): Randomly sampled from Supergrid \ Ghost_training. Same per function
 N_t_te, N_x_te = 20, 20
@@ -83,6 +83,9 @@ X = []
 X_gh_tr = []
 X_tr = []
 X_te = []
+
+# M
+M_gh_tr = []
 
 for i in range(1,m+1):
 
@@ -160,6 +163,12 @@ for i in range(1,m+1):
     # X_te
     X_te.append(pairs_te.T)
 
+    
+    # M
+    m_gh_tr = np.zeros(N_gh_tr, dtype=bool)
+    m_gh_tr[idx_tr] = True
+    M_gh_tr.append(m_gh_tr)
+
 # Stack everything on top of each other
 # U
 U = np.vstack(U).T # (32000, m)
@@ -189,8 +198,11 @@ X_te = np.vstack(X_te) # (m*N_te,2)
 
 
 
+
 # Create a boolean array of size N initialized with False
-M = np.zeros((N_gh_tr,m), dtype=bool)
+M_gh_tr = np.hstack(M_gh_tr)
+
+
 # Set the values at specified indices to True
 # idx = []
 # for i in range(m):
