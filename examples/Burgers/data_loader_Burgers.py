@@ -18,7 +18,7 @@ m = 2
 N_t_gh_tr, N_x_gh_tr = 40, 40
 N_gh_tr = N_t_gh_tr*N_x_gh_tr
 # Training (tr): Randomly sampled from Ghost_training. Different per function.
-N_t_tr, N_x_tr = 20, 20
+N_t_tr, N_x_tr = 7, 7
 N_tr = N_t_tr*N_x_tr
 # Testing (te): Randomly sampled from Supergrid \ Ghost_training. Same per function
 N_t_te, N_x_te = 20, 20
@@ -112,7 +112,7 @@ for i in range(1,m+1):
     U_te.append(u_te.flatten())
 
     # u_t - (100, 320)
-    u_t = ps.FiniteDifference(axis=1, order=10)._differentiate(u, t=dt)
+    u_t = ps.FiniteDifference(axis=1, order=15)._differentiate(u, t=dt)
     U_t.append(u_t.flatten())
     # u_t_gh_tr - (N_t_gh_tr, N_x_gh_tr)
     u_t_gh_tr = u_t[np.ix_(idx_x_gh_tr, idx_t_gh_tr)]
