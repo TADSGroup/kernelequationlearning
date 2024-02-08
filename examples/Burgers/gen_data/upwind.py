@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 ############## SET-UP THE PROBLEM ###############
 
 mu = 1
-nu = 0.5 #kinematic viscosity coefficient
+nu = 0.01 #kinematic viscosity coefficient
     
 #Spatial mesh
 L_x = 10 #Range of the domain according to x [m]
