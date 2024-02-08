@@ -10,7 +10,8 @@ for i in range(100):
 
 
     #alphas = [1.5,2,2.5]
-    alphas = [1.8,2.2,2.9]
+    #alphas = [1.8,2.2,2.9]
+    alphas = [5,5,5]
 
     
     for alpha in alphas:

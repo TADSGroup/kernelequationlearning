@@ -64,7 +64,7 @@ def K_4dot(kernel, T ,T_, params, arg1, arg2, arg3, arg4):
 
 def Gaussian2D(x1,x2,y1,y2,params):
   sigma = params
-  r2 = ((x1-y1)**2 + 10*(x2-y2)**2)
+  r2 = ((x1-y1)**2 + (x2-y2)**2)
   return jnp.exp(-r2/(2*sigma**2))
 
 def Anisotropic_Gaussian_2D(x1,x2,y1,y2,params):
