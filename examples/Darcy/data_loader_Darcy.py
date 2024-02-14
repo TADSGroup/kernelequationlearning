@@ -14,6 +14,11 @@ def u_x1(x1,x2,beta):
     return grad0(x1,x2,beta)
 
 # True solution: Scalar field u_x2(x1,x2)
+def u_x1x1(x1,x2,beta):
+    gradgrad2 = grad(grad(u, 0),0)
+    return gradgrad2(x1,x2,beta)
+
+# True solution: Scalar field u_x2(x1,x2)
 def u_x2(x1,x2,beta):
     grad1 = grad(u, 1)
     return grad1(x1,x2,beta)
@@ -43,13 +48,13 @@ np.random.seed(9)
 # Number of functions
 m = 3
 # Ghost_training (gh_tr): Uniform grid. Same per function.
-N_x1_gh_tr, N_x2_gh_tr = 40, 40
+N_x1_gh_tr, N_x2_gh_tr = 20, 20
 N_gh_tr = N_x1_gh_tr*N_x2_gh_tr
 # Training (tr): Randomly sampled from Ghost_training. Different per function.
-N_x1_tr, N_x2_tr = 7, 7
+N_x1_tr, N_x2_tr = 3, 3
 N_tr = N_x1_tr*N_x2_tr
 # Testing (te): Randomly sampled from Supergrid \ Ghost_training. Same per function
-N_x1_te, N_x2_te = 20, 20
+N_x1_te, N_x2_te = 10, 10
 N_te = N_x1_te*N_x2_te
 
 
@@ -97,6 +102,11 @@ U_x1 = []
 U_x1_gh_tr = []
 U_x1_tr = []
 U_x1_te = []
+# U_x1x1
+U_x1x1 = []
+U_x1x1_gh_tr = []
+U_x1x1_tr = []
+U_x1x1_te = []
 # U_x2
 U_x2 = []
 U_x2_gh_tr = []
@@ -155,6 +165,19 @@ for i in range(1,m+1):
     # u_x1_te - (N_x1_te, N_x2_te) 
     utrue_x1_te = np.array(vmap(lambda t: u_x1(t[0], t[1], i))(pairs_te))
     U_x1_te.append(utrue_x1_te.flatten())
+
+    # u_x1x1 - (1000, 1000)
+    utrue_x1x1 = np.array(vmap(lambda t: u_x1x1(t[0], t[1], i))(pairs))
+    U_x1x1.append(utrue_x1x1.flatten())
+    # u_x1x1_gh_tr - (N_t_gh_tr, N_x_gh_tr)
+    utrue_x1x1_gh_tr = np.array(vmap(lambda t: u_x1x1(t[0], t[1], i))(pairs_gh_tr))
+    U_x1x1_gh_tr.append(utrue_x1x1_gh_tr.flatten())
+    # u_x1x1_tr - (N_x1x1_tr, N_x1x1_tr) 
+    utrue_x1x1_tr = np.array(vmap(lambda t: u_x1x1(t[0], t[1], i))(pairs_tr))
+    U_x1x1_tr.append(utrue_x1x1_tr.flatten())
+    # u_x1x1_te - (N_x1x1_te, N_x1x1_te) 
+    utrue_x1x1_te = np.array(vmap(lambda t: u_x1x1(t[0], t[1], i))(pairs_te))
+    U_x1x1_te.append(utrue_x1x1_te.flatten())
 
 
     # u_x2 - (1000, 1000)
@@ -224,6 +247,11 @@ U_x1 = np.vstack(U_x1).T # (1 000 000, m)
 U_x1_gh_tr = np.vstack(U_x1_gh_tr).T # (N_gh_tr, m)
 U_x1_tr = np.vstack(U_x1_tr).T # (N_tr, m)
 U_x1_te = np.vstack(U_x1_te).T # (N_te, m)
+# U_x1x1
+U_x1x1 = np.vstack(U_x1x1).T # (1 000 000, m)
+U_x1x1_gh_tr = np.vstack(U_x1x1_gh_tr).T # (N_gh_tr, m)
+U_x1x1_tr = np.vstack(U_x1x1_tr).T # (N_tr, m)
+U_x1x1_te = np.vstack(U_x1x1_te).T # (N_te, m)
 # U_x2
 U_x2 = np.vstack(U_x2).T # (1 000 000, m)
 U_x2_gh_tr = np.vstack(U_x2_gh_tr).T # (N_gh_tr, m)

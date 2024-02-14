@@ -177,16 +177,18 @@ def predictions_Burgers(X, X_train, kernel, optim_rho, alphas, N_train, N_test):
         N = N_test
 
     u_pred    = np.zeros((N,m))
-    u_x_pred  = np.zeros((N,m))
-    u_t_pred  = np.zeros((N,m))
-    u_xx_pred = np.zeros((N,m))
+    u_x1_pred  = np.zeros((N,m))
+    u_x1x1_pred  = np.zeros((N,m))
+    u_x2_pred  = np.zeros((N,m))
+    u_x2x2_pred = np.zeros((N,m))
     for i in range(m):
         u_pred[:,i]    = jnp.dot(K_2D(kernel, X[i*N:(i+1)*N,:], X_train[i*N_train:(i+1)*N_train,:], optim_rho[i]), alphas[:,i])
-        u_t_pred[:,i]  = jnp.dot(K_dot2D(kernel, X[i*N:(i+1)*N,:], X_train[i*N_train:(i+1)*N_train,:], optim_rho[i], 0), alphas[:,i])
-        u_x_pred[:,i]  = jnp.dot(K_dot2D(kernel, X[i*N:(i+1)*N,:], X_train[i*N_train:(i+1)*N_train,:], optim_rho[i], 1), alphas[:,i])
-        u_xx_pred[:,i] = jnp.dot(K_2dot2D(kernel, X[i*N:(i+1)*N,:], X_train[i*N_train:(i+1)*N_train,:], optim_rho[i], 1, 1), alphas[:,i])
+        u_x1_pred[:,i]  = jnp.dot(K_dot2D(kernel, X[i*N:(i+1)*N,:], X_train[i*N_train:(i+1)*N_train,:], optim_rho[i], 0), alphas[:,i])
+        u_x1x1_pred[:,i] = jnp.dot(K_2dot2D(kernel, X[i*N:(i+1)*N,:], X_train[i*N_train:(i+1)*N_train,:], optim_rho[i], 0, 0), alphas[:,i])
+        u_x2_pred[:,i]  = jnp.dot(K_dot2D(kernel, X[i*N:(i+1)*N,:], X_train[i*N_train:(i+1)*N_train,:], optim_rho[i], 1), alphas[:,i])
+        u_x2x2_pred[:,i] = jnp.dot(K_2dot2D(kernel, X[i*N:(i+1)*N,:], X_train[i*N_train:(i+1)*N_train,:], optim_rho[i], 1, 1), alphas[:,i])
     
-    return u_pred, u_t_pred, u_x_pred, u_xx_pred 
+    return u_pred, u_x1_pred, u_x1x1_pred, u_x2_pred, u_x2x2_pred 
 
 def predictions_Burgers_tr(X_tr, kernel, optim_rho, alphas, N_tr):
     '''
@@ -206,17 +208,19 @@ def predictions_Burgers_tr(X_tr, kernel, optim_rho, alphas, N_tr):
     m = len(optim_rho)
     N = N_tr
 
-    u_pred_tr    = np.zeros((N,m))
-    u_x_pred_tr  = np.zeros((N,m))
-    u_t_pred_tr  = np.zeros((N,m))
-    u_xx_pred_tr = np.zeros((N,m))
+    u_pred_tr = np.zeros((N,m))
+    u_x1_pred_tr  = np.zeros((N,m))
+    u_x1x1_pred_tr  = np.zeros((N,m))
+    u_x2_pred_tr  = np.zeros((N,m))
+    u_x2x2_pred_tr = np.zeros((N,m))
     for i in range(m):
         u_pred_tr[:,i]    = jnp.dot(K_2D(kernel, X_tr[i*N:(i+1)*N,:], X_tr[i*N:(i+1)*N,:], optim_rho[i]), alphas[:,i])
-        u_t_pred_tr[:,i]  = jnp.dot(K_dot2D(kernel, X_tr[i*N:(i+1)*N,:], X_tr[i*N:(i+1)*N,:], optim_rho[i], 0), alphas[:,i])
-        u_x_pred_tr[:,i]  = jnp.dot(K_dot2D(kernel, X_tr[i*N:(i+1)*N,:], X_tr[i*N:(i+1)*N,:], optim_rho[i], 1), alphas[:,i])
-        u_xx_pred_tr[:,i] = jnp.dot(K_2dot2D(kernel, X_tr[i*N:(i+1)*N,:], X_tr[i*N:(i+1)*N,:], optim_rho[i], 1, 1), alphas[:,i])
+        u_x1_pred_tr[:,i]  = jnp.dot(K_dot2D(kernel, X_tr[i*N:(i+1)*N,:], X_tr[i*N:(i+1)*N,:], optim_rho[i], 0), alphas[:,i])
+        u_x1x1_pred_tr[:,i] = jnp.dot(K_2dot2D(kernel, X_tr[i*N:(i+1)*N,:], X_tr[i*N:(i+1)*N,:], optim_rho[i], 0, 0), alphas[:,i])
+        u_x2_pred_tr[:,i]  = jnp.dot(K_dot2D(kernel, X_tr[i*N:(i+1)*N,:], X_tr[i*N:(i+1)*N,:], optim_rho[i], 1), alphas[:,i])
+        u_x2x2_pred_tr[:,i] = jnp.dot(K_2dot2D(kernel, X_tr[i*N:(i+1)*N,:], X_tr[i*N:(i+1)*N,:], optim_rho[i], 1, 1), alphas[:,i])
     
-    return u_pred_tr, u_t_pred_tr, u_x_pred_tr, u_xx_pred_tr 
+    return u_pred_tr, u_x1_pred_tr, u_x1x1_pred_tr, u_x2_pred_tr, u_x2x2_pred_tr 
 
 def predictions_Burgers_te(X_te, X_tr, kernel, optim_rho, alphas, N_tr, N_te):
     '''
@@ -237,13 +241,15 @@ def predictions_Burgers_te(X_te, X_tr, kernel, optim_rho, alphas, N_tr, N_te):
     N = N_te
 
     u_pred_te    = np.zeros((N,m))
-    u_x_pred_te  = np.zeros((N,m))
-    u_t_pred_te  = np.zeros((N,m))
-    u_xx_pred_te = np.zeros((N,m))
+    u_x1_pred_te  = np.zeros((N,m))
+    u_x1x1_pred_te = np.zeros((N,m))
+    u_x2_pred_te  = np.zeros((N,m))
+    u_x2x2_pred_te = np.zeros((N,m))
     for i in range(m):
         u_pred_te[:,i]    = jnp.dot(K_2D(kernel, X_te[i*N:(i+1)*N,:], X_tr[i*N_tr:(i+1)*N_tr,:], optim_rho[i]), alphas[:,i])
-        u_t_pred_te[:,i]  = jnp.dot(K_dot2D(kernel, X_te[i*N:(i+1)*N,:], X_tr[i*N_tr:(i+1)*N_tr,:], optim_rho[i], 0), alphas[:,i])
-        u_x_pred_te[:,i]  = jnp.dot(K_dot2D(kernel, X_te[i*N:(i+1)*N,:], X_tr[i*N_tr:(i+1)*N_tr,:], optim_rho[i], 1), alphas[:,i])
-        u_xx_pred_te[:,i] = jnp.dot(K_2dot2D(kernel, X_te[i*N:(i+1)*N,:], X_tr[i*N_tr:(i+1)*N_tr,:], optim_rho[i], 1, 1), alphas[:,i])
+        u_x1_pred_te[:,i]  = jnp.dot(K_dot2D(kernel, X_te[i*N:(i+1)*N,:], X_tr[i*N_tr:(i+1)*N_tr,:], optim_rho[i], 0), alphas[:,i])
+        u_x1x1_pred_te[:,i] = jnp.dot(K_2dot2D(kernel, X_te[i*N:(i+1)*N,:], X_tr[i*N_tr:(i+1)*N_tr,:], optim_rho[i], 0, 0), alphas[:,i])
+        u_x2_pred_te[:,i]  = jnp.dot(K_dot2D(kernel, X_te[i*N:(i+1)*N,:], X_tr[i*N_tr:(i+1)*N_tr,:], optim_rho[i], 1), alphas[:,i])
+        u_x2x2_pred_te[:,i] = jnp.dot(K_2dot2D(kernel, X_te[i*N:(i+1)*N,:], X_tr[i*N_tr:(i+1)*N_tr,:], optim_rho[i], 1, 1), alphas[:,i])
     
-    return u_pred_te, u_t_pred_te, u_x_pred_te, u_xx_pred_te
+    return u_pred_te, u_x1_pred_te, u_x1x1_pred_te, u_x2_pred_te, u_x2x2_pred_te
