@@ -131,7 +131,7 @@ X_te = []
 # M
 M_gh_tr = []
 
-for i in range(1,m+1):
+for i in range(3,m+3):
 
     # Training(collocation) points
     # (t,x)- (2, N_tr)
