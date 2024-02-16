@@ -46,12 +46,12 @@ def rhs(x1,x2,beta):
 np.random.seed(9)
 
 # Number of functions
-m = 3
+m = 2
 # Ghost_training (gh_tr): Uniform grid. Same per function.
-N_x1_gh_tr, N_x2_gh_tr = 20, 20
+N_x1_gh_tr, N_x2_gh_tr = 40, 40
 N_gh_tr = N_x1_gh_tr*N_x2_gh_tr
 # Training (tr): Randomly sampled from Ghost_training. Different per function.
-N_x1_tr, N_x2_tr = 3, 3
+N_x1_tr, N_x2_tr = 7, 7
 N_tr = N_x1_tr*N_x2_tr
 # Testing (te): Randomly sampled from Supergrid \ Ghost_training. Same per function
 N_x1_te, N_x2_te = 10, 10
