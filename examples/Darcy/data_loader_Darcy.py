@@ -46,9 +46,9 @@ def rhs(x1,x2,beta):
 np.random.seed(9)
 
 # Number of functions
-m = 2
+m = 3
 # Ghost_training (gh_tr): Uniform grid. Same per function.
-N_x1_gh_tr, N_x2_gh_tr = 40, 40
+N_x1_gh_tr, N_x2_gh_tr = 20, 20
 N_gh_tr = N_x1_gh_tr*N_x2_gh_tr
 # Training (tr): Randomly sampled from Ghost_training. Different per function.
 N_x1_tr, N_x2_tr = 7, 7
@@ -131,7 +131,7 @@ X_te = []
 # M
 M_gh_tr = []
 
-for i in range(3,m+3):
+for i in range(1,m+1): # m is the value of beta, so m > 0.
 
     # Training(collocation) points
     # (t,x)- (2, N_tr)
