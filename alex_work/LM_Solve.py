@@ -3,8 +3,6 @@ from jax.scipy.linalg import solve
 from jax import jit
 from tqdm.auto import tqdm
 
-
-
 def LevenbergMarquadtMinimize(
         init_params,
         model,
@@ -14,6 +12,7 @@ def LevenbergMarquadtMinimize(
         min_alpha = 1e-6,
         max_alpha = 20.,
         init_alpha = 3.,
+        step_adapt_multiplier = 1.2,
         callback = None,
         print_every = 50
         ):
@@ -43,6 +42,8 @@ def LevenbergMarquadtMinimize(
         max damping strength, by default 20.
     init_alpha : _type_, optional
         initial damping strength, by default 3.
+    step_adapt_multipler : float, optional
+        value to use for adapting alpha, by default 1.2
     callback : callable, optional
         function called to print another loss each iteration, by default None
     print_every : int, optional
@@ -97,7 +98,7 @@ def LevenbergMarquadtMinimize(
     for i in tqdm(range(max_iter)):
         params,loss,rhs,improvement_ratio,alpha,succeeded = LevenbergMarquadtUpdate(params,alpha)
         # Get new value for alpha
-        multiplier = 1.1
+        multiplier = step_adapt_multiplier
         if improvement_ratio <= 0.2:
             alpha = multiplier * alpha
         if improvement_ratio >= 0.8:
@@ -117,7 +118,7 @@ def LevenbergMarquadtMinimize(
             break
 
         if i%print_every ==0 or i<=5:
-            print(f"Iteration {i}, loss = {loss:.4}, Jres = {JtRes[-1]:.4}, alpha = {alpha:.4}")
+            print(f"Iteration {i}, loss = {loss:.4}, Jres = {JtRes[-1]:.4}, alpha = {alpha:.4}, improvement_ratio = {improvement_ratio:.4}")
             if callback:
                 callback(params)
 
@@ -132,7 +133,7 @@ def refine_solution(params,equation_model,reg_sequence = 10**(jnp.arange(-4.,-18
     """Refines solution with pure gauss newton through SVD"""
     refinement_losses = []
     refined_params = params.copy()
-    for reg in reg_sequence:
+    for reg in tqdm(reg_sequence):
         J = equation_model.jac(refined_params)
         F = equation_model.F(refined_params)
         refined_params = refined_params - l2reg_lstsq(J,F,reg)
