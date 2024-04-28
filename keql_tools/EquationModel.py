@@ -1,8 +1,9 @@
 import jax.numpy as jnp
-from jax import jit,grad
+from jax import jit,jacrev
 import jax
 from functools import partial
 from KernelTools import get_kernel_block_ops,eval_k,diagpart
+from jax.scipy.linalg import block_diag
 
 class InducedRKHS():
     """
@@ -24,14 +25,15 @@ class InducedRKHS():
         self.kmat = self.get_all_op_kernel_matrix(self.basis_points,self.basis_points)
         self.num_params = len(basis_points) * len(operators)
     
-    @partial(jax.jit, static_argnames=['self'])
+    @partial(jit, static_argnames=['self'])
     def evaluate_all_ops(self,eval_points,params):
         return self.get_all_op_kernel_matrix(eval_points,self.basis_points)@params
     
-    @partial(jax.jit, static_argnames=['self'])
+    @partial(jit, static_argnames=['self'])
     def point_evaluate(self,eval_points,params):
         return self.get_eval_op_kernel_matrix(eval_points,self.basis_points)@params
     
+    @partial(jit, static_argnames=['self','operators'])
     def evaluate_operators(self,operators,eval_points,params):
         return get_kernel_block_ops(self.k,operators,self.operators)(eval_points,self.basis_points)@params
     
@@ -62,8 +64,6 @@ def check_OperatorPDEModel(
     for col_points,rhs_vals in zip(collocation_points,rhs_values):
         assert len(col_points)==len(rhs_vals), "Number of collocation points don't match number of rhs values"
 
-
-
 class OperatorPDEModel():
     def __init__(
         self,
@@ -84,14 +84,17 @@ class OperatorPDEModel():
         self.collocation_points = collocation_points
         self.rhs_values = rhs_values
         self.feature_operators = feature_operators
+        self.datafit_weight = datafit_weight
     
         self.stacked_observation_values = jnp.hstack(observation_values)
         self.stacked_collocation_rhs = jnp.hstack(rhs_values)
         
+        #Precompute parameter indices to pull out different parameter blocks
+        self.total_parameters = jnp.sum([model.num_params for model in u_models]) + self.operator_model.num_params
         #Assume we put the parameters for the operators at the start of the flattened parameter set
-        self.operator_model_indices = jnp.arange(0,self.operator_model.num_params)
+        self.operator_model_indices = jnp.arange(self.total_parameters - self.operator_model.num_params,self.total_parameters)
         #Compute the start and end indices of the parameter sets for u_models
-        u_param_inds = self.operator_model.num_params+jnp.cumsum(jnp.array([0]+[model.num_params for model in u_models]))
+        u_param_inds = jnp.cumsum(jnp.array([0]+[model.num_params for model in u_models]))
         self.u_indexing = [
             jnp.arange(p,q) for p,q in zip(u_param_inds[:-1],u_param_inds[1:])
         ]
@@ -102,7 +105,8 @@ class OperatorPDEModel():
     def get_u_params(self,all_params):
         return [all_params[ind_set] for ind_set in self.u_indexing]
 
-    def get_grid_features(
+    @partial(jit, static_argnames=['self','u_model'])
+    def get_single_eqn_features(
         self,
         u_model, 
         u_params,
@@ -114,93 +118,73 @@ class OperatorPDEModel():
         u_op_features = op_evaluation.reshape(num_points,num_ops,order = 'F')
         full_features = jnp.hstack([evaluation_points,u_op_features])
         return full_features
+    
+    @partial(jit, static_argnames=['self'])
+    def get_stacked_eqn_features(
+        self,
+        all_u_params
+    ):
+        return jnp.vstack([
+            self.get_single_eqn_features(u_model,u_params,eval_points) 
+            for u_model,u_params,eval_points in zip(
+                self.u_models,
+                all_u_params,
+                self.collocation_points
+            )
+        ])
 
-    @jit
-    def datafit_residual(self,all_params):
-        all_u_parameters = self.get_u_params(all_params)
+    @partial(jit, static_argnames=['self'])
+    def datafit_residual(self,full_params):
+        all_u_params = self.get_u_params(full_params)
         obs_preds = jnp.hstack(
             [
                 model.point_evaluate(obs_points,u_params) 
                 for model,obs_points,u_params in zip(
                     self.u_models,
                     self.observation_points,
-                    all_u_parameters)
+                    all_u_params)
                 ])
-        return self.stacked_observation_values - obs_preds 
-
-
-
-
-
-# class EqnModel():
-#     datafit_weight = 40
-
-#     @jit
-#     def get_grid_features(u_params):
-#         u_params1, u_params2, u_params3 = split_u_params(u_params)
-#         evaluation_u1 = u1_model.evaluate_operators(feature_operators,xy_int,u_params1)
-#         evaluation_u2 = u2_model.evaluate_operators(feature_operators,xy_int,u_params2)
-#         evaluation_u3 = u3_model.evaluate_operators(feature_operators,xy_int,u_params3)
-#         grid_features_u1 = evaluation_u1.reshape(len(xy_int),len(feature_operators),order = 'F')
-#         grid_features_u2 = evaluation_u2.reshape(len(xy_int),len(feature_operators),order = 'F')
-#         grid_features_u3 = evaluation_u3.reshape(len(xy_int),len(feature_operators),order = 'F')
-#         grid_features_u = jnp.vstack([grid_features_u1, grid_features_u2, grid_features_u3])
-#         full_features = jnp.hstack([jnp.tile(xy_int.T,3).T,grid_features_u])
-#         return full_features
+        return self.stacked_observation_values - obs_preds
     
-#     @jit
-#     def get_grid_target(u_params):
-#         #return jnp.ones(len(xy_int))
-#         return jnp.concatenate([eval_rhs1(xy_int), eval_rhs2(xy_int), eval_rhs3(xy_int)])
-    
-#     @jit
-#     def eval_obs_points(u_params):
-#         u_params1, u_params2, u_params3 = split_u_params(u_params)
-#         return jnp.concatenate([u1_model.point_evaluate(xy_obs1,u_params1),
-#                                u2_model.point_evaluate(xy_obs2,u_params2),
-#                                u3_model.point_evaluate(xy_obs3,u_params3)])
-    
-#     @jit
-#     def datafit_residual(u_params):
-#         obs_preds = EqnModel.eval_obs_points(u_params)
-#         return u_obs - obs_preds
-    
-#     @jit
-#     def equation_residual(full_params):
-#         u_model_num_params = u1_model.num_params + u2_model.num_params + u3_model.num_params
-#         u_params = full_params[:u_model_num_params]
-#         P_params = full_params[u_model_num_params:]
-#         P_features = EqnModel.get_grid_features(u_params)
-#         P_model_preds = P_model.predict(P_features,P_params)
-#         ugrid_target = EqnModel.get_grid_target(u_params)
-#         return (ugrid_target - P_model_preds)
-    
-#     @jit
-#     def F(full_params):
-#         u_model_num_params = u1_model.num_params + u2_model.num_params + u3_model.num_params
-#         u_params = full_params[:u_model_num_params]
-#         eqn_res = EqnModel.equation_residual(full_params)
-#         data_res = EqnModel.datafit_residual(u_params)
-#         return jnp.hstack([
-#             EqnModel.datafit_weight * data_res/jnp.sqrt(len(data_res)),
-#             eqn_res/jnp.sqrt(len(eqn_res))
-#             ])
-    
-#     jac = jit(jacrev(F))
+    @partial(jit, static_argnames=['self'])
+    def equation_residual(self,full_params):
+        """
+        In the future, we may want to break this up, calculating residuals before stacking so we can look at errors on each function individually
+        """
+        all_u_params = self.get_u_params(full_params)
+        P_params = self.get_P_params(full_params)
+        stacked_features = self.get_stacked_eqn_features(all_u_params=all_u_params)
+        P_preds = self.P_model.predict(stacked_features,P_params)
+        return (self.stacked_collocation_rhs - P_preds)
 
-#     def loss(full_params):
-#         return jnp.linalg.norm(EqnModel.F(full_params))**2
+    @partial(jit, static_argnames=['self'])
+    def F(self,full_params):
+        eqn_res = self.equation_residual(full_params)
+        data_res = self.datafit_residual(full_params)
+        return jnp.hstack([
+            jnp.sqrt(self.datafit_weight) * data_res/jnp.sqrt(len(data_res)),
+            eqn_res/jnp.sqrt(len(eqn_res))
+            ])
     
-#     @jit
-#     def damping_matrix(full_params):
-#         u_model_num_params = u1_model.num_params + u2_model.num_params + u3_model.num_params
-#         u_params = full_params[:u_model_num_params]
-#         grid_feats = EqnModel.get_grid_features(u_params)
-#         kmat_P = P_model.kernel_function(grid_feats,grid_feats)
-#         dmat = block_diag(
-#             u1_model.kmat+1e-3 * diagpart(u1_model.kmat),
-#             u2_model.kmat+1e-3 * diagpart(u2_model.kmat),
-#             u3_model.kmat+1e-3 * diagpart(u3_model.kmat),
-#             1e-3 * (kmat_P+1e-3 * jnp.identity(len(kmat_P)))
-#         )
-#         return dmat
+    #usually jacrev is faster than jacfwd on examples I've tested
+    jac = jit(jacrev(F,argnums = 1),static_argnames='self')
+
+    @partial(jit, static_argnames=['self'])
+    def loss(self,full_params):
+        return jnp.linalg.norm(self.F(full_params))**2
+    
+    @jit
+    def damping_matrix(self,full_params,nugget = 1e-5):
+        """
+        Presumably, I shouldn't build the kernel matrix for P again, but that would make the code
+        more unwieldy
+        """
+        u_params = self.get_u_params(full_params)
+        grid_feats = self.get_eqn_features(u_params)
+        kmat_P = self.operator_model.kernel_function(grid_feats,grid_feats)
+        dmat = block_diag(
+            *([model.kmat for model in self.u_models]+[kmat_P])
+            )
+        dmat= dmat + diagpart(dmat)
+        return dmat
+
