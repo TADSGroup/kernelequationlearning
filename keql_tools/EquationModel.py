@@ -43,11 +43,11 @@ class InducedRKHS():
         return coeffs
 
 def check_OperatorPDEModel(
-        u_models:list,
-        observation_points:list,
-        observation_values:list,
-        collocation_points:list,
-        rhs_values:list,
+        u_models:tuple,
+        observation_points:tuple,
+        observation_values:tuple,
+        collocation_points:tuple,
+        rhs_values:tuple,
     ):
     try:
         assert len(u_models)==len(observation_points)==len(observation_values)==len(collocation_points)==len(rhs_values), "Data dimensions don't match up"
@@ -68,15 +68,15 @@ class OperatorPDEModel():
     def __init__(
         self,
         operator_model,
-        u_models:list,
-        observation_points:list,
-        observation_values:list,
-        collocation_points:list,
-        rhs_values:list,
-        feature_operators:list,
+        u_models:tuple,
+        observation_points:tuple,
+        observation_values:tuple,
+        collocation_points:tuple,
+        rhs_values:tuple,
+        feature_operators:tuple,
         datafit_weight = 10,
     ):
-        check_OperatorPDEModel(observation_points,observation_values,collocation_points,rhs_values)
+        check_OperatorPDEModel(u_models,observation_points,observation_values,collocation_points,rhs_values)
         self.u_models = u_models
         self.operator_model = operator_model
         self.observation_points = observation_points
@@ -90,9 +90,11 @@ class OperatorPDEModel():
         self.stacked_collocation_rhs = jnp.hstack(rhs_values)
         
         #Precompute parameter indices to pull out different parameter blocks
-        self.total_parameters = jnp.sum([model.num_params for model in u_models]) + self.operator_model.num_params
+        self.total_parameters = sum([model.num_params for model in u_models]) + self.operator_model.num_params
+        
         #Assume we put the parameters for the operators at the start of the flattened parameter set
         self.operator_model_indices = jnp.arange(self.total_parameters - self.operator_model.num_params,self.total_parameters)
+
         #Compute the start and end indices of the parameter sets for u_models
         u_param_inds = jnp.cumsum(jnp.array([0]+[model.num_params for model in u_models]))
         self.u_indexing = [
@@ -154,7 +156,7 @@ class OperatorPDEModel():
         all_u_params = self.get_u_params(full_params)
         P_params = self.get_P_params(full_params)
         stacked_features = self.get_stacked_eqn_features(all_u_params=all_u_params)
-        P_preds = self.P_model.predict(stacked_features,P_params)
+        P_preds = self.operator_model.predict(stacked_features,P_params)
         return (self.stacked_collocation_rhs - P_preds)
 
     @partial(jit, static_argnames=['self'])
@@ -173,14 +175,14 @@ class OperatorPDEModel():
     def loss(self,full_params):
         return jnp.linalg.norm(self.F(full_params))**2
     
-    @jit
+    @partial(jit, static_argnames=['self'])
     def damping_matrix(self,full_params,nugget = 1e-5):
         """
         Presumably, I shouldn't build the kernel matrix for P again, but that would make the code
         more unwieldy
         """
         u_params = self.get_u_params(full_params)
-        grid_feats = self.get_eqn_features(u_params)
+        grid_feats = self.get_stacked_eqn_features(u_params)
         kmat_P = self.operator_model.kernel_function(grid_feats,grid_feats)
         dmat = block_diag(
             *([model.kmat for model in self.u_models]+[kmat_P])
