@@ -16,11 +16,11 @@ def make_block(k,L_op,R_op):
     return vectorize_kfunc(op_k_apply(k,L_op,R_op))
 
 def get_kernel_block_ops(k,ops_left,ops_right,output_dim=1):
-    def k_super(t_left,t_right):
+    def k_super(x,y):
         I = jnp.eye(output_dim)
         blocks = (
             [
-                [jnp.kron(make_block(k,L_op,R_op)(t_left,t_right),I) for R_op in ops_right]
+                [jnp.kron(make_block(k,L_op,R_op)(x,y),I) for R_op in ops_right]
                 for L_op in ops_left
             ]
         )
