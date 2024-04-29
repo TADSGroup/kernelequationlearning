@@ -1,6 +1,6 @@
 import jax.numpy as jnp
 from KernelTools import diagpart
-from jax.scipy.special import factorial
+from scipy.special import factorial
 
 # Kernels
 

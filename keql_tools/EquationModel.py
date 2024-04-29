@@ -4,6 +4,7 @@ import jax
 from functools import partial
 from KernelTools import get_kernel_block_ops,eval_k,diagpart
 from jax.scipy.linalg import block_diag
+from typing import Optional
 
 class InducedRKHS():
     """
@@ -47,24 +48,33 @@ def check_OperatorPDEModel(
         observation_points:tuple,
         observation_values:tuple,
         collocation_points:tuple,
-        rhs_values:tuple,
+        rhs_forcing_values:tuple,
     ):
     try:
-        assert len(u_models)==len(observation_points)==len(observation_values)==len(collocation_points)==len(rhs_values), "Data dimensions don't match up"
+        assert (
+            len(u_models)==
+            len(observation_points)==
+            len(observation_values)==
+            len(collocation_points)==
+            len(rhs_forcing_values), "Data dimensions don't match up"
+        )
     except AssertionError as message: 
         print(message)
         print("u_models given: ",len(u_models))
         print("sets of observation_points given: ",len(observation_points))
         print("sets of observation_values given: ",len(observation_values))
         print("sets of collocation_points given: ",len(collocation_points))
-        print("sets of rhs_values given: ",len(rhs_values))
+        print("sets of rhs_forcing_values given: ",len(rhs_forcing_values))
         print("These should all match")
     for obs_points,obs_vals in zip(observation_points,observation_values):
         assert len(obs_points)==len(obs_vals), "Number of observation locations don't match number of observed values"
-    for col_points,rhs_vals in zip(collocation_points,rhs_values):
+    for col_points,rhs_vals in zip(collocation_points,rhs_forcing_values):
         assert len(col_points)==len(rhs_vals), "Number of collocation points don't match number of rhs values"
 
 class OperatorPDEModel():
+    """
+    TODO: Subclass a single function version, rename this to something like diffeq model.
+    """
     def __init__(
         self,
         operator_model,
@@ -72,22 +82,27 @@ class OperatorPDEModel():
         observation_points:tuple,
         observation_values:tuple,
         collocation_points:tuple,
-        rhs_values:tuple,
         feature_operators:tuple,
+        rhs_forcing_values:Optional[tuple]=None,
+        rhs_operator=None,
         datafit_weight = 10,
     ):
-        check_OperatorPDEModel(u_models,observation_points,observation_values,collocation_points,rhs_values)
+        if rhs_forcing_values is None:
+            rhs_forcing_values = tuple(jnp.zeros(len(col_points)) for col_points in collocation_points)
+        check_OperatorPDEModel(u_models,observation_points,observation_values,collocation_points,rhs_forcing_values)
         self.u_models = u_models
         self.operator_model = operator_model
         self.observation_points = observation_points
         self.observation_values = observation_values
         self.collocation_points = collocation_points
-        self.rhs_values = rhs_values
+        self.rhs_forcing_values = rhs_forcing_values
         self.feature_operators = feature_operators
         self.datafit_weight = datafit_weight
-    
+
+        self.rhs_operator = rhs_operator
+
         self.stacked_observation_values = jnp.hstack(observation_values)
-        self.stacked_collocation_rhs = jnp.hstack(rhs_values)
+        self.stacked_collocation_rhs = jnp.hstack(rhs_forcing_values)
         
         #Precompute parameter indices to pull out different parameter blocks
         self.total_parameters = sum([model.num_params for model in u_models]) + self.operator_model.num_params
@@ -134,6 +149,45 @@ class OperatorPDEModel():
                 self.collocation_points
             )
         ])
+    
+    @partial(jit, static_argnames=['self','u_model'])
+    def get_rhs_op_single(self,u_model,u_params,evaluation_points):
+        if self.rhs_operator is None:
+            return jnp.zeros(len(evaluation_points))
+        else:
+            op_evaluation = u_model.evaluate_operators((self.rhs_operator,),evaluation_points,u_params)
+            return op_evaluation.flatten()
+        
+    @partial(jit, static_argnames=['self'])
+    def get_stacked_rhs_op(
+        self,
+        all_u_params
+    ):
+        return jnp.hstack([
+            self.get_rhs_op_single(u_model,u_params,eval_points) 
+            for u_model,u_params,eval_points in zip(
+                self.u_models,
+                all_u_params,
+                self.collocation_points
+            )
+        ])
+    
+    def get_overall_rhs(self,all_u_params):
+        return self.get_stacked_rhs_op(all_u_params) + self.stacked_collocation_rhs
+    
+    @partial(jit, static_argnames=['self'])
+    def equation_residual(self,full_params):
+        """
+        In the future, we may want to break this up, calculating residuals before stacking so we can look at errors on each function individually
+        """
+        all_u_params = self.get_u_params(full_params)
+        P_params = self.get_P_params(full_params)
+        stacked_features = self.get_stacked_eqn_features(all_u_params=all_u_params)
+        P_preds = self.operator_model.predict(stacked_features,P_params)
+        overall_rhs = self.get_overall_rhs(all_u_params)
+    
+        return (overall_rhs - P_preds)
+
 
     @partial(jit, static_argnames=['self'])
     def datafit_residual(self,full_params):
@@ -148,17 +202,6 @@ class OperatorPDEModel():
                 ])
         return self.stacked_observation_values - obs_preds
     
-    @partial(jit, static_argnames=['self'])
-    def equation_residual(self,full_params):
-        """
-        In the future, we may want to break this up, calculating residuals before stacking so we can look at errors on each function individually
-        """
-        all_u_params = self.get_u_params(full_params)
-        P_params = self.get_P_params(full_params)
-        stacked_features = self.get_stacked_eqn_features(all_u_params=all_u_params)
-        P_preds = self.operator_model.predict(stacked_features,P_params)
-        return (self.stacked_collocation_rhs - P_preds)
-
     @partial(jit, static_argnames=['self'])
     def F(self,full_params):
         eqn_res = self.equation_residual(full_params)
@@ -176,7 +219,7 @@ class OperatorPDEModel():
         return jnp.linalg.norm(self.F(full_params))**2
     
     @partial(jit, static_argnames=['self'])
-    def damping_matrix(self,full_params,nugget = 1e-5):
+    def damping_matrix(self,full_params,nugget = 1e-3):
         """
         Presumably, I shouldn't build the kernel matrix for P again, but that would make the code
         more unwieldy
@@ -187,6 +230,6 @@ class OperatorPDEModel():
         dmat = block_diag(
             *([model.kmat for model in self.u_models]+[kmat_P])
             )
-        dmat= dmat + diagpart(dmat)
+        dmat= dmat + nugget*diagpart(dmat)
         return dmat
 
