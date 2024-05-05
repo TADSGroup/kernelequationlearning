@@ -75,7 +75,7 @@ def LevenbergMarquadtMinimize(
 
         JtJ = J.T@J
         rhs = J.T@residuals + beta * damping_matrix@params
-
+        #TODO: Factors of 2 are all off!
         alpha =jnp.clip(alpha,min_alpha,max_alpha)
         for i in range(max_line_search_iterations):
             M = JtJ + (alpha + beta) * damping_matrix

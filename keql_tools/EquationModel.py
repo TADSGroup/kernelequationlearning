@@ -216,7 +216,9 @@ class OperatorPDEModel():
 
     @partial(jit, static_argnames=['self'])
     def loss(self,full_params):
-        return jnp.linalg.norm(self.F(full_params))**2
+        """
+        TODO: Include the regularization term here instead of in EqnModel"""
+        return (1/2) * jnp.linalg.norm(self.F(full_params))**2
     
     @partial(jit, static_argnames=['self'])
     def damping_matrix(self,full_params,nugget = 1e-3):
