@@ -51,13 +51,12 @@ def check_OperatorPDEModel(
         rhs_forcing_values:tuple,
     ):
     try:
-        assert (
-            len(u_models)==
+        consistent_dimensions = (len(u_models)==
             len(observation_points)==
             len(observation_values)==
             len(collocation_points)==
-            len(rhs_forcing_values), "Data dimensions don't match up"
-        )
+            len(rhs_forcing_values))
+        assert consistent_dimensions, "Data dimensions don't match up"
     except AssertionError as message: 
         print(message)
         print("u_models given: ",len(u_models))
@@ -234,4 +233,3 @@ class OperatorPDEModel():
             )
         dmat= dmat + nugget*diagpart(dmat)
         return dmat
-
