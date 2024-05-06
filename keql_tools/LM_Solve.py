@@ -59,7 +59,7 @@ def LevenbergMarquadtMinimize(
     residuals = model.F(params)
     damping_matrix = model.damping_matrix(params)
     loss_vals = [
-        jnp.sum(residuals**2) + beta * params.T@damping_matrix@params
+        (1/2)*jnp.sum(residuals**2) + (1/2)*beta * params.T@damping_matrix@params
     ]
     JtRes = [jnp.linalg.norm(J.T@residuals + beta * damping_matrix@params)]
     iterate_history = [params]
@@ -71,19 +71,18 @@ def LevenbergMarquadtMinimize(
         J = model.jac(params)
         residuals = model.F(params)
         damping_matrix = model.damping_matrix(params)
-        loss = jnp.sum(residuals**2) + beta * params.T@damping_matrix@params
+        loss = (1/2)*jnp.sum(residuals**2) + (1/2)*beta * params.T@damping_matrix@params
 
         JtJ = J.T@J
         rhs = J.T@residuals + beta * damping_matrix@params
-        #TODO: Factors of 2 are all off!
         alpha =jnp.clip(alpha,min_alpha,max_alpha)
         for i in range(max_line_search_iterations):
             M = JtJ + (alpha + beta) * damping_matrix
             step = solve(M,rhs,assume_a = 'pos')
             new_params = params - step
             new_reg_norm = beta * new_params.T@damping_matrix@new_params
-            new_loss = jnp.sum(model.F(new_params)**2) + new_reg_norm
-            predicted_loss = jnp.sum((J@step-residuals)**2) + beta * new_reg_norm
+            new_loss = (1/2)*(jnp.sum(model.F(new_params)**2) + new_reg_norm)
+            predicted_loss = (1/2)*(jnp.sum((J@step-residuals)**2) + beta * new_reg_norm)
             improvement_ratio = (loss - new_loss)/(loss - predicted_loss)
 
             if improvement_ratio >= cmin:
@@ -124,13 +123,8 @@ def LevenbergMarquadtMinimize(
 
     return params,loss_vals,JtRes,improvement_ratios,alpha_vals,iterate_history
 
-@jit
-def l2reg_lstsq(A, y, reg=1e-10):
-    U,sigma,Vt = jnp.linalg.svd(A, full_matrices=False)
-    return Vt.T@((sigma/(sigma**2+reg))*(U.T@y))
 
-def refine_solution(params,equation_model,reg_sequence = 10**(jnp.arange(-4.,-18,-0.5))):
-    """Refines solution with pure gauss newton through SVD"""
+def adaptive_refine_solution(params,equation_model,initial_reg = 1e-3):
     refinement_losses = []
     refined_params = params.copy()
     for reg in tqdm(reg_sequence):
@@ -139,3 +133,45 @@ def refine_solution(params,equation_model,reg_sequence = 10**(jnp.arange(-4.,-18
         refined_params = refined_params - l2reg_lstsq(J,F,reg)
         refinement_losses += [equation_model.loss(refined_params)]
     return refined_params,jnp.array(refinement_losses)
+
+
+@jit
+def l2reg_lstsq(A, y, reg=1e-10):
+    U,sigma,Vt = jnp.linalg.svd(A, full_matrices=False)
+    return Vt.T@((sigma/(sigma**2+reg))*(U.T@y))
+
+def refine_solution(params,equation_model,reg_sequence = 10**(jnp.arange(-4.,-18,-0.5))):
+    """Refines solution with almost pure gauss newton through SVD"""
+    refinement_losses = []
+    refined_params = params.copy()
+    for reg in tqdm(reg_sequence):
+        J = equation_model.jac(refined_params)
+        F = equation_model.F(refined_params)
+        refined_params = refined_params - l2reg_lstsq(J,F,reg)
+        refinement_losses += [equation_model.loss(refined_params)]
+    return refined_params,jnp.array(refinement_losses)
+
+def adaptive_refine_solution(params,equation_model,initial_reg = 1e-4,num_iter = 100,mult = 0.7):
+    refinement_losses = [equation_model.loss(params)]
+    refined_params = params.copy()
+    reg_vals = [initial_reg]
+    reg = initial_reg
+    for i in tqdm(range(num_iter)):
+        J = equation_model.jac(refined_params)
+        F = equation_model.F(refined_params)
+        U,sigma,Vt = jnp.linalg.svd(J, full_matrices=False)
+
+        candidate_regs = [mult * reg,reg,reg/mult]
+        candidate_steps = [Vt.T@((sigma/(sigma**2+S))*(U.T@F)) for S in candidate_regs]
+        
+        loss_vals = jnp.array([
+            equation_model.loss(
+                refined_params - step)
+             for step in candidate_steps])
+        choice = jnp.argmin(loss_vals)
+        reg = candidate_regs[choice]
+        step = candidate_steps[choice]
+        refined_params = refined_params - step
+        refinement_losses.append(loss_vals[choice])
+        reg_vals.append(reg)
+    return refined_params,jnp.array(refinement_losses),jnp.array(reg_vals)

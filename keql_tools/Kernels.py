@@ -106,7 +106,7 @@ def get_matern(p,rho):
         #  Taylor
         nu = p + 1/2
         taylor = 1 + (nu/(2*(1-nu))*d2 + nu**2/(8*(2-3*nu+nu**2))*(d2)**2)
-        return jnp.where(d2<1e-8, taylor, true)
+        return jnp.where(d2<1e-12, taylor, true)
     return k
 
 def get_matern_13_2(rho):
