@@ -42,10 +42,10 @@ def GP_sampler(num_samples, X, kernel, len_scale, reg, seed, **kwargs):
     N = len(X)
     # Choose kernel
     if kernel == 'rbf':
-      k = get_gaussianRBF(len_scale)
+      k_single = get_gaussianRBF(len_scale)
     elif kernel == 'matern':
-      k = get_gaussianRBF(len_scale)
-    k = vectorize_kfunc(k)
+      k_single = get_gaussianRBF(len_scale)
+    k = vectorize_kfunc(k_single)
     # Build kernel matrix
     kernel_matrix = k(X,X) + reg*jnp.eye(N)
     chol_factor = jnp.linalg.cholesky(kernel_matrix)
@@ -53,18 +53,18 @@ def GP_sampler(num_samples, X, kernel, len_scale, reg, seed, **kwargs):
     # Sample standard normal
     normal_samples = jax.random.normal(key = PRNG_key, shape=(N,num_samples))
     # Compute sample
-    sample = jnp.dot(chol_factor,normal_samples)
+    sample = jnp.dot(chol_factor,normal_samples)    
 
     # Build interpolants
     def get_interpolant(pairs,values):
       coeffs = jnp.linalg.solve(kernel_matrix,values)
+      k_vec = jax.vmap(k_single,in_axes=(0,None))
+
       def interp(x):
-        return jnp.dot(k(x,X),coeffs)
+        return jnp.dot(k_vec(X,x),coeffs)
       return interp
     
-    interps = []
-    for i in range(num_samples):
-      interps.append(get_interpolant(X,sample[:,i]))
+    interps = [get_interpolant(X,S) for S in sample.T]
     
     return interps
 
