@@ -6,14 +6,14 @@ from Kernels import *
 from KernelTools import *
 
 
-def GP_sampler(num_samples, X, kernel, len_scale, reg, seed, **kwargs):   
+def GP_sampler(num_samples, X, kernel, reg, seed):   
     """
         Gets samples(functions) of GP. 
 
         Args:
             num_samples (int): Number of samples.
             X (jnp.array): Domain to get the sample.
-            kernel (str): Name of kernel.
+            kernel (fun): Kernel function from Kernels.py.
             len_scale (float): Scale to be used in kernel.
             reg (float): Regularization to invert kernel matrix.
             seed (float): Integer to fix the simulation.
@@ -35,17 +35,15 @@ def GP_sampler(num_samples, X, kernel, len_scale, reg, seed, **kwargs):
                                         reg = 1e-12,
                                         seed = 2025
                                     )
-            >>> u1(pairs)
-            Array([-0.81486408, -0.80513906, -0.79336064, ...,  1.33616814,
-                    1.35864323,  1.38001376], dtype=float64)
+            >>> u1(jnp.array([0.1,0.4]))
+            Array(-0.30628616, dtype=float64)
+            >>> jax.vmap(u1)(pairs)
+            Array([-0.81486278, -0.69548977, -0.39381869, ...,  0.79765953,
+                    0.76227927,  0.51719524], dtype=float64)
+
     """
     N = len(X)
-    # Choose kernel
-    if kernel == 'rbf':
-      k_single = get_gaussianRBF(len_scale)
-    elif kernel == 'matern':
-      k_single = get_gaussianRBF(len_scale)
-    k = vectorize_kfunc(k_single)
+    k = vectorize_kfunc(kernel)
     # Build kernel matrix
     kernel_matrix = k(X,X) + reg*jnp.eye(N)
     chol_factor = jnp.linalg.cholesky(kernel_matrix)
@@ -58,7 +56,7 @@ def GP_sampler(num_samples, X, kernel, len_scale, reg, seed, **kwargs):
     # Build interpolants
     def get_interpolant(pairs,values):
       coeffs = jnp.linalg.solve(kernel_matrix,values)
-      k_vec = jax.vmap(k_single,in_axes=(0,None))
+      k_vec = jax.vmap(kernel,in_axes=(0,None))
 
       def interp(x):
         return jnp.dot(k_vec(X,x),coeffs)
@@ -66,7 +64,7 @@ def GP_sampler(num_samples, X, kernel, len_scale, reg, seed, **kwargs):
     
     interps = [get_interpolant(X,S) for S in sample.T]
     
-    return interps
+    return interps 
 
 
 
