@@ -40,7 +40,7 @@ def plot_obs(xy_fine, xy_all, xy_obs, vmapped_funcs, title = None):
 
 def plot_compare_error(xy_fine, vmapped_func_pred, vmapped_func_true, title = None):
     """
-        Plots the up to three functions the observed values. 
+        Plots predicted, true function and their abs error. 
 
         Args:
             xy_fine (Array): Pairs of points in fine grid.
@@ -50,7 +50,7 @@ def plot_compare_error(xy_fine, vmapped_func_pred, vmapped_func_true, title = No
             title (str): Title name.
 
         Returns:
-            None: Plots predicted and true functions and their abs error.   
+            Plots predicted and true functions and their abs error.   
 
     """ 
     
