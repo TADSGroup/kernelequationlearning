@@ -1,13 +1,16 @@
 import jax.numpy as jnp
+import pandas as pd
 
-
-
-# Computes normalized root squared mse
 def get_nrmse(true,pred):
+    '''
+        Computes normalized root squared mse
+    '''
     return jnp.sqrt(jnp.mean((true-pred)**2)/jnp.mean(true**2))
 
-# Draw pandas df containing nrmse between pred u's and true u's
 def table_u_errors(xy_fine, u_models, u_sols, vmapped_u_true_functions, all_u_params_init):
+    '''
+        Draw pandas df containing nrmse between pred u's and true u's
+    '''
     # Create empty dict to store errors
     results_dict = dict()
     for i in range(len(vmapped_u_true_functions)):
