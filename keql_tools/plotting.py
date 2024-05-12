@@ -38,14 +38,14 @@ def plot_obs(xy_fine, xy_all, xy_obs, vmapped_funcs, title = None):
     plt.show()
     return None
 
-def plot_compare_error(xy_fine, vmapped_func_pred, vmapped_func_true, title = None):
+def plot_compare_error(xy_fine, xy_all, xy_obsi, vmapped_func_pred, vmapped_func_true, title = None):
     """
         Plots predicted, true function and their abs error. 
 
         Args:
             xy_fine (Array): Pairs of points in fine grid.
             xy_all (Array): Pairs of ghosts points.
-            xy_obs (list): List of pairs of observed points per function.
+            xy_obsi (Array): Pairs of observed points by true function.
             vmapped_funcs (list): List of vectorized functions with vmap.
             title (str): Title name.
 
@@ -70,7 +70,7 @@ def plot_compare_error(xy_fine, vmapped_func_pred, vmapped_func_true, title = No
     plt.title("Error")
     plt.tricontourf(xy_fine[:,0],xy_fine[:,1], true_vals-pred_vals,250)
     plt.colorbar()
-    plt.scatter(xy_obs1[:,0],xy_obs1[:,1],c='red',s = 50)
+    plt.scatter(xy_obsi[:,0],xy_obsi[:,1],c='red',s = 50)
     plt.scatter(xy_all[:,0],xy_all[:,1],c='black',s = 4)
     plt.show()
     return None
