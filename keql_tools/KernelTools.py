@@ -39,10 +39,9 @@ def diff2_k(k,index):
 
 def get_selected_grad(k,index,selected_index):
     gradf = grad(k,index)
-    def selgrad(x1,x2):
-        return gradf(x1,x2)[selected_index]
+    def selgrad(*args):
+        return gradf(*args)[selected_index]
     return selgrad
-
 
 def dx_k(k,index):
     return get_selected_grad(k,index,1)
