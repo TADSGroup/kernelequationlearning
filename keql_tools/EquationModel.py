@@ -42,7 +42,13 @@ class InducedRKHS():
         K = self.get_eval_op_kernel_matrix(X,self.basis_points)
         coeffs = jax.scipy.linalg.solve(K.T@K + lam * (self.kmat+eps * diagpart(self.kmat)),K.T@y,assume_a = 'pos')
         return coeffs
-
+    
+    def get_eval_function(self,params):
+        def u(x):
+            return (self.get_eval_op_kernel_matrix(x.reshape(1,-1),self.basis_points)@params)[0]
+        return u
+    
+    
 def check_OperatorPDEModel(
         u_models:tuple,
         observation_points:tuple,
