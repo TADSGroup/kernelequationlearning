@@ -54,7 +54,7 @@ def plot_compare_error(xy_fine, xy_all, xy_obsi, vmapped_func_pred, vmapped_func
 
     """ 
     
-    plt.figure(figsize=(13,4))
+    plt.figure(figsize=(12,2))
     plt.suptitle(title)
     plt.subplot(1,3,1)
     plt.title("Learned u")
