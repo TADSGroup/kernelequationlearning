@@ -3,7 +3,7 @@ from jax import jit,jacrev
 import jax
 from functools import partial
 from KernelTools import get_kernel_block_ops,eval_k,diagpart
-from jax.scipy.linalg import block_diag
+from jax.scipy.linalg import block_diag,cholesky,solve_triangular
 from typing import Optional
 
 class InducedRKHS():
@@ -47,6 +47,57 @@ class InducedRKHS():
         def u(x):
             return (self.get_eval_op_kernel_matrix(x.reshape(1,-1),self.basis_points)@params)[0]
         return u
+    
+    def get_damping(self):
+        return self.kmat
+
+class CholInducedRKHS():
+    """
+    Still have to go back and allow for multiple operator sets
+        For example, points on boundary only need evaluation, not the rest of the operators if we know boundary conditions
+    This only does 1 dimensional output for now. 
+    """
+    def __init__(
+            self,
+            basis_points,
+            operators,
+            kernel_function,
+            nugget_size = 1e-6
+            ) -> None:
+        self.basis_points = basis_points
+        self.operators = operators
+        self.k = kernel_function
+        self.get_all_op_kernel_matrix = jit(get_kernel_block_ops(self.k,self.operators,self.operators))
+        self.get_eval_op_kernel_matrix = jit(get_kernel_block_ops(self.k,[eval_k],self.operators))
+        self.kmat = self.get_all_op_kernel_matrix(self.basis_points,self.basis_points)
+        self.cholT = cholesky(self.kmat + nugget_size * diagpart(self.kmat),lower = False)
+        self.num_params = len(basis_points) * len(operators)
+    
+    @partial(jit, static_argnames=['self'])
+    def evaluate_all_ops(self,eval_points,params):
+        return self.get_all_op_kernel_matrix(eval_points,self.basis_points)@solve_triangular(self.cholT,params)
+    
+    @partial(jit, static_argnames=['self'])
+    def point_evaluate(self,eval_points,params):
+        return self.get_eval_op_kernel_matrix(eval_points,self.basis_points)@solve_triangular(self.cholT,params)
+    
+    @partial(jit, static_argnames=['self','operators'])
+    def evaluate_operators(self,operators,eval_points,params):
+        return get_kernel_block_ops(self.k,operators,self.operators)(eval_points,self.basis_points)@solve_triangular(self.cholT,params)
+    
+    def get_fitted_params(self,X,y,lam = 1e-6,eps = 1e-4):
+        K = self.get_eval_op_kernel_matrix(X,self.basis_points)
+        alpha_coeffs = jax.scipy.linalg.solve(K.T@K + lam * (self.kmat+eps * diagpart(self.kmat)),K.T@y,assume_a = 'pos')
+        params = self.cholT@alpha_coeffs
+        return params
+    
+    def get_eval_function(self,params):
+        def u(x):
+            return (self.get_eval_op_kernel_matrix(x.reshape(1,-1),self.basis_points)@solve_triangular(self.cholT,params))[0]
+        return u
+    
+    def get_damping(self):
+        return jnp.identity(self.num_params)
     
     
 def check_OperatorPDEModel(
@@ -235,7 +286,7 @@ class OperatorPDEModel():
         grid_feats = self.get_stacked_eqn_features(u_params)
         kmat_P = self.operator_model.kernel_function(grid_feats,grid_feats)
         dmat = block_diag(
-            *([model.kmat for model in self.u_models]+[kmat_P])
+            *([model.get_damping() for model in self.u_models]+[kmat_P])
             )
         dmat= dmat + nugget*diagpart(dmat)
         return dmat
