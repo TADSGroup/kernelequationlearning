@@ -82,7 +82,7 @@ def LevenbergMarquadtMinimize(
             new_params = params - step
             new_reg_norm = beta * new_params.T@damping_matrix@new_params
             new_loss = (1/2)*(jnp.sum(model.F(new_params)**2) + new_reg_norm)
-            predicted_loss = (1/2)*(jnp.sum((J@step-residuals)**2) + beta * new_reg_norm)
+            predicted_loss = (1/2)*(jnp.sum((J@step-residuals)**2) + new_reg_norm)
             improvement_ratio = (loss - new_loss)/(loss - predicted_loss)
 
             if improvement_ratio >= cmin:
