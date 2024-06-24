@@ -11,7 +11,6 @@ from scipy.sparse import eye_array
 def get_burger_solver(alpha,kappa,k = 1e-4,n = 1000):
     h = 1/(n+1)
 
-
     L = diags_array([np.ones(n-1),-2 * np.ones(n),np.ones(n-1)],offsets = [-1,0,1])/(h**2)
     D = diags_array([-np.ones(n-1),np.ones(n-1)],offsets = [-1,1])/(2*h)
 
