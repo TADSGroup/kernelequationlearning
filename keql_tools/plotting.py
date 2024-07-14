@@ -1,15 +1,13 @@
 
 import matplotlib.pyplot as plt
 
-
-
 def plot_obs(xy_fine, xy_all, xy_obs, vmapped_funcs, title = None):
     """
         Plots the up to three functions the observed values. 
 
         Args:
             xy_fine (Array): Pairs of points in fine grid.
-            xy_all (Array): Pairs of ghosts points.
+            xy_all (list): Pairs of ghosts points.
             xy_obs (list): List of pairs of observed points per function.
             vmapped_funcs (list): List of vectorized functions with vmap.
             title (str): Title name.
@@ -30,7 +28,7 @@ def plot_obs(xy_fine, xy_all, xy_obs, vmapped_funcs, title = None):
         axsi = axs[i].tricontourf(xy_fine[:,0],xy_fine[:,1],vmapped_funcs[i](xy_fine),cmap = 'Blues')
         plt.colorbar(axsi, ax = axs[i])
         axs[i].scatter(xy_obs[i][:,0],xy_obs[i][:,1],c='red', s = 50)
-        axs[i].scatter(xy_all[:,0],xy_all[:,1],c='black',s = 10)
+        axs[i].scatter(xy_all[i][:,0],xy_all[i][:,1],c='black',s = 10)
         axs[i].set_xlabel('x')
         axs[i].set_ylabel('y')
         axs[i].set_xlim(-0.1,1.1)
@@ -38,7 +36,10 @@ def plot_obs(xy_fine, xy_all, xy_obs, vmapped_funcs, title = None):
     plt.show()
     return None
 
-def plot_compare_error(xy_fine, xy_all, xy_obsi, vmapped_func_pred, vmapped_func_true, title = None):
+def plot_compare_error(
+        xy_fine, xy_all, xy_obsi, 
+        vmapped_func_pred, 
+        vmapped_func_true, title = None):
     """
         Plots predicted, true function and their abs error. 
 
@@ -60,11 +61,13 @@ def plot_compare_error(xy_fine, xy_all, xy_obsi, vmapped_func_pred, vmapped_func
     plt.title("Learned u")
     pred_vals = vmapped_func_pred(xy_fine)
     plt.tricontourf(xy_fine[:,0],xy_fine[:,1], pred_vals, 200)
+    plt.colorbar()
 
     plt.subplot(1,3,2)
     plt.title("True u")
     true_vals = vmapped_func_true(xy_fine)
     plt.tricontourf(xy_fine[:,0],xy_fine[:,1], true_vals, 200)
+    plt.colorbar()
 
     plt.subplot(1,3,3)
     plt.title("Error")

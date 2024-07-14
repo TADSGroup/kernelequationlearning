@@ -24,6 +24,4 @@ def table_u_errors(xy_fine, u_models, u_sols, vmapped_u_true_functions, all_u_pa
         results_dict[i]=[float(get_nrmse(u_true_fine,u_eval_fine)),float(get_nrmse(u_true_fine,u_eval_fine_init))]
     # Create pandas df from dict
     result_df_u = pd.DataFrame.from_dict(results_dict,orient = 'index',columns = ['1 step','2 step (at initialization)'])
-    # Display the table
-    display(100*result_df_u.round(4))
-    return None
+    return (100*result_df_u)
