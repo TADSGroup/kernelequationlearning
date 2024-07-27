@@ -49,9 +49,10 @@ def dx_k(k,index):
 def dxx_k(k,index):
     return get_selected_grad(get_selected_grad(k,index,1),index,1)
 
-
-
 def dt_k(k,index):
     return get_selected_grad(k,index,0)
 
-
+def laplacian_k(k,index):
+    def lapk(*args):
+        return jnp.trace(jax.hessian(k,index)(*args))
+    return lapk
