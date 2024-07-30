@@ -127,10 +127,58 @@ def check_OperatorPDEModel(
     for col_points,rhs_vals in zip(collocation_points,rhs_forcing_values):
         assert len(col_points)==len(rhs_vals), "Number of collocation points don't match number of rhs values"
 
+class OperatorModel():
+    def __init__(
+        self,
+        kernel,
+        nugget_size = 1e-7
+    ):
+        self.kernel_function = kernel
+        self.nugget_size = nugget_size
+
+    def predict(self,input_data,params):
+        K = self.kernel_function(input_data,input_data)
+        return K@params
+        
+    def predict_new(self,X,anchors,params):
+        return self.kernel_function(X,anchors)@params
+    
+    def fit_params(self,X,y,nugget = 1e-8):
+        K = self.kernel_function(X,X)
+        return jnp.linalg.solve(K + nugget * diagpart(K),y)
+    
+    def rkhs_mat(self,X):
+        return self.kernel_function(X,X)
+
+class CholOperatorModel():
+    def __init__(
+        self,
+        kernel,
+        nugget_size = 1e-8,
+    ):
+        self.kernel_function = kernel
+        self.nugget_size = nugget_size
+
+    def predict(self,X,params):
+        K = self.kernel_function(X,X)
+        cholT = cholesky(K + self.nugget_size * diagpart(K),lower = False)
+        return K@solve_triangular(cholT,params)
+    
+    def predict_new(self,X,anchors,params):
+        K = self.kernel_function(anchors,anchors)
+        cholT = cholesky(K + self.nugget_size * diagpart(K),lower = False)
+        return self.kernel_function(X,anchors)@solve_triangular(cholT,params)
+    
+    def fit_params(self,X,y,nugget = 1e-8):
+        K = self.kernel_function(X,X)
+        cholT = cholesky(K + self.nugget_size * diagpart(K),lower = False)
+        return cholT@jnp.linalg.solve(K + nugget * diagpart(K),y)
+
+    def rkhs_mat(self,X):
+        return jnp.eye(len(X))
+
+
 class OperatorPDEModel():
-    """
-    TODO: Subclass a single function version, rename this to something like diffeq model.
-    """
     def __init__(
         self,
         operator_model,
@@ -148,6 +196,8 @@ class OperatorPDEModel():
         check_OperatorPDEModel(u_models,observation_points,observation_values,collocation_points,rhs_forcing_values)
         self.u_models = u_models
         self.operator_model = operator_model
+
+        self.num_operator_params = sum(map(len,collocation_points))
         self.observation_points = observation_points
         self.observation_values = observation_values
         self.collocation_points = collocation_points
@@ -161,10 +211,10 @@ class OperatorPDEModel():
         self.stacked_collocation_rhs = jnp.hstack(rhs_forcing_values)
         
         #Precompute parameter indices to pull out different parameter blocks
-        self.total_parameters = sum([model.num_params for model in u_models]) + self.operator_model.num_params
+        self.total_parameters = sum([model.num_params for model in u_models]) + self.num_operator_params
         
         #Assume we put the parameters for the operators at the start of the flattened parameter set
-        self.operator_model_indices = jnp.arange(self.total_parameters - self.operator_model.num_params,self.total_parameters)
+        self.operator_model_indices = jnp.arange(self.total_parameters - self.num_operator_params,self.total_parameters)
 
         #Compute the start and end indices of the parameter sets for u_models
         u_param_inds = jnp.cumsum(jnp.array([0]+[model.num_params for model in u_models]))
@@ -284,9 +334,8 @@ class OperatorPDEModel():
         """
         u_params = self.get_u_params(full_params)
         grid_feats = self.get_stacked_eqn_features(u_params)
-        kmat_P = self.operator_model.kernel_function(grid_feats,grid_feats)
         dmat = block_diag(
-            *([model.get_damping() for model in self.u_models]+[kmat_P])
+            *([model.get_damping() for model in self.u_models]+[self.operator_model.rkhs_mat(grid_feats)])
             )
         dmat= dmat + nugget*diagpart(dmat)
         return dmat
