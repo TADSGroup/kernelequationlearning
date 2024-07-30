@@ -202,7 +202,7 @@ def build_input_observations(num_obs, xy_int, xy_bdy,vmapped_u_true_functions, v
         f_obs.append(vmapped_rhs[i](xy_obsi))
     return xy_obs, u_obs, f_obs
 
-#TODO: Use jax random functions instead of numpy
+
 def build_u_obs_single(num_obs, xy_int, xy_bdy,vmapped_u_true_function,key):
     """
         Samples points out of those being modeled as observations, and compute u_true those points
@@ -240,3 +240,4 @@ def build_u_obs_all(
             observation_counts,xy_ints,xy_bdys,vec_u_true_funcs,split_keys
             )
         ])
+

@@ -2,10 +2,9 @@ import numpy as np
 from scipy.sparse import diags_array
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
-from scipy.sparse.linalg import spsolve
+from scipy.sparse.linalg import spsolve,factorized
+from scipy.sparse import identity,eye_array,csc_array
 from tqdm.auto import tqdm
-from scipy.sparse import identity
-from scipy.sparse import eye_array
 
 
 def get_burger_solver(alpha,kappa,k = 1e-4,n = 1000):
@@ -21,10 +20,14 @@ def get_burger_solver(alpha,kappa,k = 1e-4,n = 1000):
         L1 = I - B/4
         R1 = I + B/4
         L2 = I - B/3
+        L1_solve = factorized(csc_array(L1))
+        L2_solve = factorized(csc_array(L2))
+
         def trbdf2_heat(u):
-            #u1 = spsolve(L2,R1@u)
-            u1 = spsolve(L1,R1@u)
-            return spsolve(L2,(1/3) * (4 * u1 - u))
+            #u1 = spsolve(L1,R1@u)
+            #spsolve(L2,(1/3) * (4 * u1 - u))
+            u1 = L1_solve(R1@u)
+            return L2_solve((1/3) * (4 * u1 - u))
         return trbdf2_heat
 
     def rk2_burger(k,alpha):
