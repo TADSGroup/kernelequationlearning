@@ -1,6 +1,9 @@
 import jax.numpy as jnp
-from KernelTools import diagpart
+from KernelTools import diagpart, vectorize_kfunc
 from scipy.special import factorial
+from jaxopt import GradientDescent
+from functools import partial
+from jax import jit,value_and_grad
 
 # Kernels
 
@@ -165,3 +168,24 @@ def get_sum_of_kernels(kernels,coefficients):
     def k(x,y):
         return jnp.sum(jnp.array([c * ki(x,y) for c,ki in zip(coefficients,kernels)]))
     return k
+
+def log1pexp(x):
+    return jnp.log(jnp.exp(-x)+1) + x
+
+def inv_log1pexp(y):
+    return jnp.log(jnp.exp(y)-1)
+
+def fit_kernel_params(parametrized_kernel,X,y,init_params,nugget = 1e-7):
+    
+    @jit
+    @value_and_grad
+    def marginal_like(params):
+        vmapped_kfunc = vectorize_kfunc(partial(parametrized_kernel,params = params))
+        K = vmapped_kfunc(X,X)
+        K = K + nugget * diagpart(K)
+        return (1/2) * y.T@jnp.linalg.inv(K)@y + (1/2) * jnp.linalg.slogdet(K).logabsdet
+    solver = GradientDescent(marginal_like,value_and_grad=True,jit = True,tol = 1e-5)
+    result = solver.run(init_params)
+    optimized_params = result.params
+    return optimized_params#,partial(parametrized_kernel,params = optimized_params)
+

@@ -14,7 +14,8 @@ def LevenbergMarquadtMinimize(
         init_alpha = 3.,
         step_adapt_multiplier = 1.2,
         callback = None,
-        print_every = 50
+        print_every = 50,
+        track_iterates = True
         ):
     """Adaptively regularized Levenberg Marquadt optimizer
     TODO: Wrap up convergence data into a convergence_data dictionary or object
@@ -120,8 +121,15 @@ def LevenbergMarquadtMinimize(
             print(f"Iteration {i}, loss = {loss:.4}, Jres = {JtRes[-1]:.4}, alpha = {alpha:.4}, improvement_ratio = {improvement_ratio:.4}")
             if callback:
                 callback(params)
-
-    return params,loss_vals,JtRes,improvement_ratios,alpha_vals,iterate_history
+    convergence_results = {
+        "loss_vals":loss_vals,
+        "norm_JtRes":JtRes,
+        "armijo_ratios":improvement_ratios,
+        "alpha_vals":alpha_vals
+    }
+    if track_iterates is True:
+        convergence_results['iterate_history']=iterate_history
+    return params,convergence_results
 
 
 @jit
@@ -130,7 +138,10 @@ def l2reg_lstsq(A, y, reg=1e-10):
     return Vt.T@((sigma/(sigma**2+reg))*(U.T@y))
 
 def refine_solution(params,equation_model,reg_sequence = 10**(jnp.arange(-4.,-18,-0.5))):
-    """Refines solution with almost pure gauss newton through SVD"""
+    """
+    Deprecated! Use adaptive refine solution
+    Refines solution with almost pure gauss newton through SVD
+    """
     refinement_losses = []
     refined_params = params.copy()
     for reg in tqdm(reg_sequence):
@@ -141,6 +152,11 @@ def refine_solution(params,equation_model,reg_sequence = 10**(jnp.arange(-4.,-18
     return refined_params,jnp.array(refinement_losses)
 
 def adaptive_refine_solution(params,equation_model,initial_reg = 1e-4,num_iter = 100,mult = 0.7):
+    """
+    Refines solution with Levenberg-Marquadt algorithm ignoring model regularization
+    This ignores the function space structure, but taking advantage of extra 
+    accuracy from SVD somehow pays off
+    """
     refinement_losses = [equation_model.loss(params)]
     refined_params = params.copy()
     reg_vals = [initial_reg]
@@ -163,7 +179,11 @@ def adaptive_refine_solution(params,equation_model,initial_reg = 1e-4,num_iter =
         refined_params = refined_params - step
         refinement_losses.append(loss_vals[choice])
         reg_vals.append(reg)
-    return refined_params,jnp.array(refinement_losses),jnp.array(reg_vals)
+    convergence_data = {
+        "loss_vals":jnp.array(refinement_losses),
+        "reg_vals":jnp.array(reg_vals)
+    }
+    return refined_params,convergence_data
 
 import jax
 def run_jaxopt(solver,x0):
