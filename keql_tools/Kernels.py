@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 from KernelTools import diagpart, vectorize_kfunc
 from scipy.special import factorial
-from jaxopt import GradientDescent
+from jaxopt import GradientDescent,LBFGS
 from functools import partial
 from jax import jit,value_and_grad
 
@@ -184,8 +184,57 @@ def fit_kernel_params(parametrized_kernel,X,y,init_params,nugget = 1e-7):
         K = vmapped_kfunc(X,X)
         K = K + nugget * diagpart(K)
         return (1/2) * y.T@jnp.linalg.inv(K)@y + (1/2) * jnp.linalg.slogdet(K).logabsdet
-    solver = GradientDescent(marginal_like,value_and_grad=True,jit = True,tol = 1e-5)
+    solver = GradientDescent(
+        marginal_like,value_and_grad=True,
+        jit = True,tol = 1e-6,stepsize=1e-7,
+        maxiter = 2500,acceleration = False)
     result = solver.run(init_params)
+
     optimized_params = result.params
     return optimized_params#,partial(parametrized_kernel,params = optimized_params)
 
+
+import sympy as sym
+from sympy import factorial
+from sympy.series.series import series
+
+def setup_matern(p,eps = 1e-8):
+    exp_multiplier = -sym.sqrt(2 * p + 1)
+    coefficients = [
+        (factorial(p)/factorial(2*p)) * (factorial(p + i) / (factorial(i) * factorial(p - i)))
+        * (sym.sqrt(8 * p + 4))**(p - i) 
+        for i in range(p + 1)]
+    powers = list(range(p,-1,-1))
+
+    jax_coefficients = jnp.array(list(map(float,coefficients)))
+    jax_powers = jnp.array(powers)
+    jax_exp_multiplier = float(exp_multiplier)
+
+    d = sym.symbols('d')
+    matern = sum([c * (d**power) for c,power in zip(coefficients,powers)])*sym.exp(exp_multiplier * d)
+    #S = series(sym.log(matern),d,0,2*p+1).removeO()
+    S = series(matern,d,0,2*p+1).removeO()
+    polyS = sym.Poly(S,d)
+    asy_coeffs = polyS.coeffs()
+    asy_coeffs = jnp.array(list(map(float,asy_coeffs)))
+
+    asy_powers = polyS.monoms()
+    half_asy_powers = jnp.array(asy_powers)[:,0]//2
+
+    def matern_p_factory(rho):
+        def matern_func(x,y):
+            d2 = jnp.sum((x-y)**2)/(rho**2)
+            d = jnp.sqrt(d2 + 1e-15)
+            true = jnp.sum(jax_coefficients*jnp.power(d,jax_powers))*jnp.exp(jax_exp_multiplier * d)
+            #asymptotic = jnp.exp(jnp.sum(asy_coeffs * jnp.power(d2,half_asy_powers)))
+            asymptotic = jnp.sum(asy_coeffs * jnp.power(d2,half_asy_powers))
+            return jnp.where(d2<eps, asymptotic, true)
+        return matern_func
+    return matern_p_factory
+
+
+def get_rq_kernel(rho):
+    def k(x,y):
+        d2 = jnp.sum((x-y)**2)/(rho**2)
+        return 1/(1+d2)
+    return k

@@ -108,7 +108,13 @@ def LevenbergMarquadtMinimize(
             print("Line Search Failed!")
             print("Final Iteration Results")
             print(f"Iteration {i}, loss = {loss:.4}, Jres = {JtRes[-1]:.4}, alpha = {alpha:.4}")
-            return params,loss_vals,JtRes,improvement_ratios,alpha_vals,iterate_history
+            convergence_results = {
+                "loss_vals":loss_vals,
+                "norm_JtRes":JtRes,
+                "armijo_ratios":improvement_ratios,
+                "alpha_vals":alpha_vals
+            }
+            return params,convergence_results
         loss_vals += [loss]
         JtRes += [jnp.linalg.norm(rhs)]
         iterate_history += [params]
