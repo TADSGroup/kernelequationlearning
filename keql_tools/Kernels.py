@@ -186,12 +186,12 @@ def fit_kernel_params(parametrized_kernel,X,y,init_params,nugget = 1e-7):
         return (1/2) * y.T@jnp.linalg.inv(K)@y + (1/2) * jnp.linalg.slogdet(K).logabsdet
     solver = GradientDescent(
         marginal_like,value_and_grad=True,
-        jit = True,tol = 1e-6,stepsize=1e-7,
-        maxiter = 2500,acceleration = False)
+        jit = True,tol = 1e-6)
     result = solver.run(init_params)
-
     optimized_params = result.params
-    return optimized_params#,partial(parametrized_kernel,params = optimized_params)
+    final_val,final_grad = marginal_like(optimized_params)
+
+    return optimized_params,final_val#,partial(parametrized_kernel,params = optimized_params)
 
 
 import sympy as sym
@@ -223,8 +223,8 @@ def setup_matern(p,eps = 1e-8):
 
     def matern_p_factory(rho):
         def matern_func(x,y):
-            d2 = jnp.sum((x-y)**2)/(rho**2)
-            d = jnp.sqrt(d2 + 1e-15)
+            d2 = jnp.sum((x-y)**2)/(rho**2) + 1e-16# + 1e-36
+            d = jnp.sqrt(jnp.maximum(d2,1e-36))
             true = jnp.sum(jax_coefficients*jnp.power(d,jax_powers))*jnp.exp(jax_exp_multiplier * d)
             #asymptotic = jnp.exp(jnp.sum(asy_coeffs * jnp.power(d2,half_asy_powers)))
             asymptotic = jnp.sum(asy_coeffs * jnp.power(d2,half_asy_powers))

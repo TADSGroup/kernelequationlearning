@@ -157,27 +157,56 @@ def refine_solution(params,equation_model,reg_sequence = 10**(jnp.arange(-4.,-18
         refinement_losses += [equation_model.loss(refined_params)]
     return refined_params,jnp.array(refinement_losses)
 
-def adaptive_refine_solution(params,equation_model,initial_reg = 1e-4,num_iter = 100,mult = 0.7):
+def adaptive_refine_solution(
+        params,
+        equation_model,
+        initial_reg = 1e-4,
+        num_iter = 100,
+        mult = 0.7,
+        overall_regularization = 0.,
+        tol = 1e-15,
+        print_every = 1000000
+        ):
     """
     Refines solution with Levenberg-Marquadt algorithm ignoring model regularization
     This ignores the function space structure, but taking advantage of extra 
     accuracy from SVD somehow pays off
     """
-    refinement_losses = [equation_model.loss(params)]
+    lam = overall_regularization
+    refinement_losses = [equation_model.loss(params) + lam * jnp.linalg.norm(params)**2]
     refined_params = params.copy()
     reg_vals = [initial_reg]
+    gradnorms = [jnp.linalg.norm(jax.grad(equation_model.loss)(params) + lam * params)]
     reg = initial_reg
     for i in tqdm(range(num_iter)):
+        candidate_regs = [mult * reg,reg,reg/mult]
+
         J = equation_model.jac(refined_params)
         F = equation_model.F(refined_params)
+        
         U,sigma,Vt = jnp.linalg.svd(J, full_matrices=False)
-
-        candidate_regs = [mult * reg,reg,reg/mult]
-        candidate_steps = [Vt.T@((sigma/(sigma**2+S))*(U.T@F)) for S in candidate_regs]
+        rhs = sigma*(U.T@F) + lam*Vt@refined_params
+        gradnorm = jnp.linalg.norm(J.T@F + lam * refined_params)
+        gradnorms.append(gradnorm)
+        if gradnorm<=tol:
+            print("Converged")
+            break
+        if i >25:
+            recent_decrease = jnp.min(jnp.array(refinement_losses[-20:-10])) - jnp.min(jnp.array(refinement_losses[-10:]))
+            if recent_decrease <=  tol:
+                print("Converged")
+                break
+        if i%print_every==0:
+            print(f"Iteration {i}, loss = {refinement_losses[-1]}")
+        
+        candidate_steps = [Vt.T@(
+            (1/(sigma**2+ S + lam))*(rhs)
+            )
+        for S in candidate_regs]
         
         loss_vals = jnp.array([
             equation_model.loss(
-                refined_params - step)
+                refined_params - step) + lam * jnp.linalg.norm(refined_params - step)**2
              for step in candidate_steps])
         choice = jnp.argmin(loss_vals)
         reg = candidate_regs[choice]
@@ -187,7 +216,8 @@ def adaptive_refine_solution(params,equation_model,initial_reg = 1e-4,num_iter =
         reg_vals.append(reg)
     convergence_data = {
         "loss_vals":jnp.array(refinement_losses),
-        "reg_vals":jnp.array(reg_vals)
+        "reg_vals":jnp.array(reg_vals),
+        "gradnorms":jnp.array(gradnorms)
     }
     return refined_params,convergence_data
 
