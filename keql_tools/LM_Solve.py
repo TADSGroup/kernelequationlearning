@@ -165,7 +165,8 @@ def adaptive_refine_solution(
         mult = 0.7,
         overall_regularization = 0.,
         tol = 1e-15,
-        print_every = 1000000
+        print_every = 1000000,
+        min_iter = 25
         ):
     """
     Refines solution with Levenberg-Marquadt algorithm ignoring model regularization
@@ -191,8 +192,8 @@ def adaptive_refine_solution(
         if gradnorm<=tol:
             print("Converged")
             break
-        if i >25:
-            recent_decrease = jnp.min(jnp.array(refinement_losses[-20:-10])) - jnp.min(jnp.array(refinement_losses[-10:]))
+        if i >min_iter:
+            recent_decrease = jnp.min(jnp.array(refinement_losses[-20:-10])) - jnp.max(jnp.array(refinement_losses[-10:]))
             if recent_decrease <=  tol:
                 print("Converged")
                 break

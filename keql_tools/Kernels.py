@@ -175,7 +175,7 @@ def log1pexp(x):
 def inv_log1pexp(y):
     return jnp.log(jnp.exp(y)-1)
 
-def fit_kernel_params(parametrized_kernel,X,y,init_params,nugget = 1e-7):
+def fit_kernel_params(parametrized_kernel,X,y,init_params,nugget = 1e-7,**kwargs):
     
     @jit
     @value_and_grad
@@ -186,7 +186,7 @@ def fit_kernel_params(parametrized_kernel,X,y,init_params,nugget = 1e-7):
         return (1/2) * y.T@jnp.linalg.inv(K)@y + (1/2) * jnp.linalg.slogdet(K).logabsdet
     solver = GradientDescent(
         marginal_like,value_and_grad=True,
-        jit = True,tol = 1e-6)
+        jit = True,tol = 1e-6,**kwargs)
     result = solver.run(init_params)
     optimized_params = result.params
     final_val,final_grad = marginal_like(optimized_params)
