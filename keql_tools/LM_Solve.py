@@ -248,3 +248,10 @@ def run_jaxopt(solver,x0):
         "stepsizes":jnp.array(stepsizes)
     }
     return sol,convergence_data,state
+
+
+def pad_1025(A):
+    padding_shape = jnp.array(A.shape)
+    pad_index = jnp.argmax(padding_shape)
+    padding_shape = padding_shape.at[jnp.argmax(padding_shape)].set(jnp.maximum(0,1025 - padding_shape[jnp.argmax(padding_shape)]))
+    return jnp.concat([A,jnp.zeros(padding_shape)],axis = pad_index)

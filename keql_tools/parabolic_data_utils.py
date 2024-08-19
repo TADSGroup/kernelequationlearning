@@ -64,19 +64,27 @@ def build_burgers_data(
 def setup_problem_data(
     tx_int,
     tx_bdy,
-    num_obs,
+    num_obs_to_sample,
     prng_key,
-    times_to_observe = (0,)
+    tx_obs_to_include = None,
+    times_to_observe = (0,),
 ):
+    if tx_obs_to_include is None:
+        included_obs = jnp.zeros((0,tx_int.shape[1]))
+    else:
+        included_obs = tx_obs_to_include
     time_full_obs_inds = jnp.where(jnp.isin(tx_int[:,0],jnp.array(times_to_observe)))[0]
-    tx_all = jnp.vstack([tx_bdy,tx_int])
+
+    #All points are boundary, interior collocation, and observations
+    tx_all = jnp.vstack([tx_bdy,tx_int,included_obs])
 
     remaining_inds = jnp.delete(jnp.arange(len(tx_int)),time_full_obs_inds)
-    sampled_inds = jax.random.choice(prng_key,remaining_inds,(num_obs,),replace = False)
+    sampled_inds = jax.random.choice(prng_key,remaining_inds,(num_obs_to_sample,),replace = False)
 
     tx_obs = jnp.vstack([
         tx_bdy,
         tx_int[time_full_obs_inds],
         tx_int[sampled_inds],
+        included_obs
     ])
     return tx_all,tx_obs

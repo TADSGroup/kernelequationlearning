@@ -119,7 +119,6 @@ def plot_input_data(
     include_collocation = True
 ):
     plt.figure(figsize=(8,5))
-
     x_bounds = jnp.min(fine_grid[:,0]),jnp.max(fine_grid[:,0])
     y_bounds = jnp.min(fine_grid[:,1]),jnp.max(fine_grid[:,1])
     plt.tricontourf(fine_grid[:,0],fine_grid[:,1],func_to_plot(fine_grid),50)
@@ -132,7 +131,6 @@ def plot_input_data(
     plt.xlim(x_bounds[0] - 0.05,x_bounds[1] + 0.05)
     plt.ylim(y_bounds[0] - 0.05,y_bounds[1] + 0.05)
     plt.figlegend(loc = 'upper center')
-    plt.show()
 
 
 

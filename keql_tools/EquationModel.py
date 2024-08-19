@@ -284,7 +284,8 @@ class OperatorPDEModel():
     @partial(jit, static_argnames=['self'])
     def equation_residual(self,full_params):
         """
-        In the future, we may want to break this up, calculating residuals before stacking so we can look at errors on each function individually
+        In the future, we may want to break this up, 
+        calculating residuals before stacking so we can look at errors on each function individually
         """
         all_u_params = self.get_u_params(full_params)
         P_params = self.get_P_params(full_params)
