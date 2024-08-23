@@ -72,7 +72,7 @@ def GP_sampler(num_samples, X, kernel, reg, seed):
     
     return interps 
 
-# Build interior and boundary grids
+# Build interior and boundary grids 
 def build_xy_grid(x_range,y_range,num_grid_x,num_grid_y):
     full_x_grid = jnp.linspace(x_range[0],x_range[1],num_grid_x)
     full_y_grid = jnp.linspace(y_range[0],y_range[1],num_grid_y)
