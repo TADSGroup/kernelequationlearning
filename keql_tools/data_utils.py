@@ -31,13 +31,13 @@ def GP_sampler(num_samples, X, kernel, reg, seed):
         Example:
             >>> # Create fine grid
             >>> x = jnp.linspace(0,1,40)
+            >>> kernel_GP = get_gaussianRBF(0.5)
             >>> y = x
             >>> xv, yv = jnp.meshgrid(x, y)
             >>> pairs = jnp.vstack([xv.ravel(), yv.ravel()]).T
             >>> u1, u2, u3 = GPsampler2D(num_samples = 3,
                                         X = pairs, 
-                                        kernel = 'rbf',
-                                        len_scale = 1., 
+                                        kernel = kernel_GP, 
                                         reg = 1e-12,
                                         seed = 2025
                                     )
@@ -70,7 +70,7 @@ def GP_sampler(num_samples, X, kernel, reg, seed):
     
     interps = [get_interpolant(X,S) for S in sample.T]
     
-    return interps 
+    return interps
 
 # Build interior and boundary grids 
 def build_xy_grid(x_range,y_range,num_grid_x,num_grid_y):

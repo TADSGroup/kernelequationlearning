@@ -37,6 +37,71 @@ def plot_obs(xy_fine, xy_all, xy_obs, vmapped_funcs, title = None):
     plt.show()
     return None
 
+def plot_obs_parabolic(xy_fine, xy_all, xy_obs, vmapped_funcs, title = None):
+    """
+        Plots the up to three functions the observed values. 
+
+        Args:
+            xy_fine (Array): Pairs of points in fine grid.
+            xy_all (list): Pairs of ghosts points.
+            xy_obs (list): List of pairs of observed points per function.
+            vmapped_funcs (list): List of vectorized functions with vmap.
+            title (str): Title name.
+
+        Returns:
+            None: Plots functions.   
+
+    """
+
+    n = len(vmapped_funcs)
+    if n > 3:
+        n = 3
+    fig, axs = plt.subplots(figsize = (20,4), nrows=1 , ncols = n, sharex = True, sharey = True)
+    fig.subplots_adjust(hspace=0.2, wspace=0.1)
+    fig.suptitle(title)
+    for i in range(n):
+        # Contour plot in blue
+        axsi = axs[i].tricontourf(xy_fine[:,0],xy_fine[:,1],vmapped_funcs[i](xy_fine),50)
+        plt.colorbar(axsi, ax = axs[i])
+        axs[i].scatter(xy_obs[i][:,0],xy_obs[i][:,1],c='red', s = 50, alpha = 0.2)
+        axs[i].scatter(xy_all[i][:,0],xy_all[i][:,1],c='black',s = 10, alpha = 0.1)
+        axs[i].set_xlabel('t')
+        axs[i].set_ylabel('x')
+        axs[i].set_xlim(-0.1,1.1)
+        axs[i].set_ylim(-0.1,1.1)
+    plt.show()
+    return None
+
+
+def plot_init_final_parabolic(grid, vmapped_funcs, title = None):
+    """
+        Plots the up to three functions the observed values. 
+
+        Args:
+            grid (1D Array): Fine grid to plot every function.
+            vmapped_funcs (list): List of vectorized functions with vmap.
+            title (str): Title name.
+
+        Returns:
+            None: Plots functions.   
+
+    """
+    num_grid = len(grid)
+    n = len(vmapped_funcs)
+    if n > 3:
+        n = 3
+    fig, axs = plt.subplots(figsize = (20,4), nrows=1 , ncols = n, sharex = True, sharey = True)
+    fig.subplots_adjust(hspace=0.2, wspace=0.1)
+    fig.suptitle(title)
+    for i in range(n):
+        axs[i].plot(grid,vmapped_funcs[i](jnp.vstack([0.0*jnp.ones(num_grid),grid]).T),label = 't=0')
+        axs[i].plot(grid,vmapped_funcs[i](jnp.vstack([1.*jnp.ones(num_grid),grid]).T),label = 't=1')
+        axs[i].set_xlabel('t')
+        axs[i].set_ylabel('x')
+        axs[i].legend()
+    plt.show()
+    return None
+
 def plot_compare_error(
         xy_fine, xy_all, xy_obsi, 
         vmapped_func_pred, 
