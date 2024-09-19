@@ -1,6 +1,6 @@
 import jax 
 import jax.numpy as jnp
-from pde_solvers.BurgerSolver import get_burger_solver
+from pde_solvers.BurgerSolver import get_burger_solver,get_burger_solver_periodic
 from KernelTools import vectorize_kfunc
 import numpy as np
 from scipy.interpolate import RectBivariateSpline
@@ -110,6 +110,8 @@ def build_burgers_data(
     grid,solver = get_burger_solver(alpha,kappa,k_timestep,n = n_finite_diff)
     u0 = func_u0(grid)[1:-1]
     sols,tvals = solver(u0,final_time)
+    #TODO: move the appending of boundary conditions into what the solver itself returns 
+    #So that it's congruent with the grid
     sols = np.hstack([np.zeros((len(sols),1)),sols,np.zeros((len(sols),1))])
     interp = RectBivariateSpline(tvals,grid,sols)
 
@@ -120,6 +122,30 @@ def build_burgers_data(
         ut_interp = interp.partial_derivative(1,0)
         return ut_interp(x[:,0],x[:,1],grid = False)
     return u_true_function,ut_true_function,interp,tvals,sols
+
+def build_burgers_data_periodic(
+    func_u0,
+    kappa,
+    alpha,
+    k_timestep = 1e-4,
+    n_finite_diff = 1999,
+    final_time = 1.01
+):
+    grid,solver = get_burger_solver_periodic(alpha,kappa,k_timestep,n = n_finite_diff)
+    u0 = func_u0(grid)[:-1]
+    sols,tvals = solver(u0,final_time)
+    #TODO: Do this adjustment inside the solver
+    sols = np.hstack([sols,sols[:,:1]])
+    interp = RectBivariateSpline(tvals,grid,sols)
+
+    def u_true_function(x):
+        return interp(x[:,0],x[:,1],grid = False)
+
+    def ut_true_function(x):
+        ut_interp = interp.partial_derivative(1,0)
+        return ut_interp(x[:,0],x[:,1],grid = False)
+    return u_true_function,ut_true_function,interp,tvals,sols
+
 
 def setup_problem_data(
     tx_int,

@@ -190,12 +190,12 @@ def adaptive_refine_solution(
         gradnorm = jnp.linalg.norm(J.T@F + lam * refined_params)
         gradnorms.append(gradnorm)
         if gradnorm<=tol:
-            print("Converged")
+            print("Converged by gradnorm")
             break
         if i >min_iter:
-            recent_decrease = jnp.min(jnp.array(refinement_losses[-20:-10])) - jnp.max(jnp.array(refinement_losses[-10:]))
+            recent_decrease = jnp.min(jnp.array(refinement_losses[-20:-10])) - jnp.min(jnp.array(refinement_losses[-10:]))
             if recent_decrease <=  tol:
-                print("Converged")
+                print("Converged by no improvement")
                 break
         if i%print_every==0:
             print(f"Iteration {i}, loss = {refinement_losses[-1]}")
@@ -212,9 +212,17 @@ def adaptive_refine_solution(
         choice = jnp.argmin(loss_vals)
         reg = candidate_regs[choice]
         step = candidate_steps[choice]
-        refined_params = refined_params - step
-        refinement_losses.append(loss_vals[choice])
-        reg_vals.append(reg)
+        if jnp.min(loss_vals)<refinement_losses[-1]:
+            #Step accepted
+            refined_params = refined_params - step
+            refinement_losses.append(loss_vals[choice])
+            reg_vals.append(reg)
+        else:
+            print(f"Iteration {i} Step Failed")
+            #Step failed
+            refinement_losses.append(refinement_losses[-1])
+            reg_vals.append(reg_vals[-1])
+            reg = reg * 2
     convergence_data = {
         "loss_vals":jnp.array(refinement_losses),
         "reg_vals":jnp.array(reg_vals),

@@ -38,5 +38,5 @@ def table_u_errors(xy_fine, u_models, u_sols, vmapped_u_true_functions, all_u_pa
         # Compute rnmse's and append to dict
         results_dict[i]=[float(get_nrmse(u_true_fine,u_eval_fine)),float(get_nrmse(u_true_fine,u_eval_fine_init))]
     # Create pandas df from dict
-    result_df_u = pd.DataFrame.from_dict(results_dict,orient = 'index',columns = ['1 step','2 step (at initialization)'])
+    result_df_u = pd.DataFrame.from_dict(results_dict,orient = 'index',columns = ['Percent error 1 step','Percent error 2 step (at init)'])
     return (100*result_df_u)
