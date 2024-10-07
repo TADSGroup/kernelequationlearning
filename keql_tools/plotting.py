@@ -26,14 +26,21 @@ def plot_obs(xy_fine, xy_all, xy_obs, vmapped_funcs, title = None):
     fig.suptitle(title)
     for i in range(n):
         # Contour plot in blue
-        axsi = axs[i].tricontourf(xy_fine[:,0],xy_fine[:,1],vmapped_funcs[i](xy_fine),cmap = 'Blues')
+        # axsi = axs[i].tricontourf(xy_fine[:,0],xy_fine[:,1],vmapped_funcs[i](xy_fine),cmap = 'Blues')
+        axsi = axs[i].tricontourf(xy_fine[:,0],xy_fine[:,1],vmapped_funcs[i](xy_fine))
         plt.colorbar(axsi, ax = axs[i])
         axs[i].scatter(xy_obs[i][:,0],xy_obs[i][:,1],c='red', s = 50)
         axs[i].scatter(xy_all[i][:,0],xy_all[i][:,1],c='black',s = 10)
-        axs[i].set_xlabel('x')
         axs[i].set_ylabel('y')
+        axs[i].set_xlabel('x')
         axs[i].set_xlim(-0.1,1.1)
         axs[i].set_ylim(-0.1,1.1)
+        axs[i].spines['top'].set_visible(False)
+        axs[i].spines['right'].set_visible(False)
+        axs[i].spines['bottom'].set_visible(False)
+        axs[i].spines['left'].set_visible(False)
+        # axs[i].get_xaxis().set_ticks([])
+        # axs[i].get_yaxis().set_ticks([])
     plt.show()
     return None
 
