@@ -44,6 +44,44 @@ def plot_obs(xy_fine, xy_all, xy_obs, vmapped_funcs, title = None):
     plt.show()
     return None
 
+def plot_contours(xy_fine, vmapped_funcs, title = None):
+    """
+        Plots the up to three functions the observed values. 
+
+        Args:
+            xy_fine (Array): Pairs of points in fine grid.
+            vmapped_funcs (list): List of vectorized functions with vmap.
+            title (str): Title name.
+
+        Returns:
+            None: Plots functions.   
+
+    """
+
+    n = len(vmapped_funcs)
+    if n > 3:
+        n = 3
+    fig, axs = plt.subplots(figsize = (20,4), nrows=1 , ncols = n, sharex = True, sharey = True)
+    fig.subplots_adjust(hspace=0.2, wspace=0.1)
+    fig.suptitle(title)
+    for i in range(n):
+        # Contour plot in blue
+        # axsi = axs[i].tricontourf(xy_fine[:,0],xy_fine[:,1],vmapped_funcs[i](xy_fine),cmap = 'Blues')
+        axsi = axs[i].tricontourf(xy_fine[:,0],xy_fine[:,1],vmapped_funcs[i](xy_fine))
+        plt.colorbar(axsi, ax = axs[i])
+        axs[i].set_ylabel(' ')
+        axs[i].set_xlabel(' ')
+        axs[i].set_xlim(-0.1,1.1)
+        axs[i].set_ylim(-0.1,1.1)
+        axs[i].spines['top'].set_visible(False)
+        axs[i].spines['right'].set_visible(False)
+        axs[i].spines['bottom'].set_visible(False)
+        axs[i].spines['left'].set_visible(False)
+        # axs[i].get_xaxis().set_ticks([])
+        # axs[i].get_yaxis().set_ticks([])
+    plt.show()
+    return None
+
 def plot_obs_parabolic(xy_fine, xy_all, xy_obs, vmapped_funcs, title = None):
     """
         Plots the up to three functions the observed values. 
