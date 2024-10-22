@@ -3,7 +3,7 @@ from jax.scipy.linalg import solve
 from jax import jit
 from tqdm.auto import tqdm
 
-def LevenbergMarquadtMinimize(
+def CholeskyLM(
         init_params,
         model,
         beta,

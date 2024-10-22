@@ -3,7 +3,7 @@ from jax.scipy.linalg import solve
 from jax import jit
 from tqdm.auto import tqdm
 
-def LevenbergMarquadtMinimize(
+def CholeskyLM(
         init_params,
         model,
         beta,
@@ -157,7 +157,7 @@ def refine_solution(params,equation_model,reg_sequence = 10**(jnp.arange(-4.,-18
         refinement_losses += [equation_model.loss(refined_params)]
     return refined_params,jnp.array(refinement_losses)
 
-def adaptive_refine_solution(
+def SVD_LM(
         params,
         equation_model,
         initial_reg = 1e-4,

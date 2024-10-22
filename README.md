@@ -25,7 +25,7 @@ KEQL
     ├── HessAnalyze.py
     ├── Kernels.py
     ├── KernelTools.py
-    ├── LM_Solve.py
+    ├── Optimizers.py
     └── setup.py
 ```
 
