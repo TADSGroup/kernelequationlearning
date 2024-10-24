@@ -2,7 +2,7 @@ import jax.numpy as jnp
 from jax import jit,jacrev
 import jax
 from functools import partial
-from KernelTools import get_kernel_block_ops,eval_k,diagpart
+from KernelTools import get_kernel_block_ops,eval_k,diagpart,vectorize_kfunc
 from jax.scipy.linalg import block_diag,cholesky,solve_triangular
 from typing import Optional
 
@@ -149,6 +149,36 @@ class OperatorModel():
     
     def rkhs_mat(self,X):
         return self.kernel_function(X,X)
+    
+class InducedOperatorModel():
+    def __init__(
+            self,
+            basis_points,
+            kernel_function,
+            nugget_size = 1e-6
+            ) -> None:
+        self.basis_points = basis_points
+        self.k = kernel_function
+        self.kvec = vectorize_kfunc(self.k)
+        self.kmat = self.kvec(self.basis_points,self.basis_points)
+        self.cholT = cholesky(self.kmat + nugget_size * diagpart(self.kmat),lower = False)
+        self.num_params = len(basis_points)
+    
+    
+    @partial(jit, static_argnames=['self'])
+    def predict(self,eval_points,params):
+        return self.kvec(eval_points,self.basis_points)@solve_triangular(self.cholT,params)
+        
+    def get_fitted_params(self,X,y,lam = 1e-6,eps = 1e-4):
+        K = self.kvec(X,self.basis_points)
+        ## TODO do this least squares solve better
+        alpha_coeffs = jax.scipy.linalg.solve(K.T@K + lam * (self.kmat+eps * diagpart(self.kmat)),K.T@y,assume_a = 'pos')
+        params = self.cholT@alpha_coeffs
+        return params
+        
+    def get_damping(self):
+        return jnp.identity(self.num_params)
+
 
 class CholOperatorModel():
     def __init__(
@@ -353,6 +383,7 @@ class SplitOperatorPDEModel():
         rhs_forcing_values:Optional[tuple]=None,
         rhs_operator=None,
         datafit_weight = 10,
+        jacobian_operator = jax.jacrev,
         num_P_operator_params = None
     ):
         if rhs_forcing_values is None:
@@ -360,6 +391,7 @@ class SplitOperatorPDEModel():
         check_OperatorPDEModel(u_models,observation_points,observation_values,collocation_points,rhs_forcing_values)
         self.u_models = u_models
         self.operator_model = operator_model
+        self.residual_dimension = sum([len(a) for a in observation_points]) + sum([len(a) for a in collocation_points])
 
         if num_P_operator_params is None:
             self.num_operator_params = sum(map(len,collocation_points))
@@ -371,6 +403,7 @@ class SplitOperatorPDEModel():
         self.rhs_forcing_values = rhs_forcing_values
         self.feature_operators = feature_operators
         self.datafit_weight = datafit_weight
+        self.jacobian_operator = jacobian_operator
 
         self.rhs_operator = rhs_operator
 
@@ -495,9 +528,17 @@ class SplitOperatorPDEModel():
             jnp.sqrt(self.datafit_weight) * data_res/jnp.sqrt(len(data_res)),
             eqn_res/jnp.sqrt(len(eqn_res))
             ])
+    
+    @partial(jit, static_argnames=['self'])
+    def jac(self,full_params):
+        """This is to allow for custom jacobian operators, and a choice
+        between forward and reverse mode autodiff.
+        In particular, we may want batched map based JVP
+        """
+        return self.jacobian_operator(self.F)(full_params)
         
     #usually jacrev is faster than jacfwd on examples I've tested
-    jac = jit(jacrev(F,argnums = 1),static_argnames='self')
+    # jac = jit(jacrev(F,argnums = 1),static_argnames='self')
 
     def loss(self,full_params):
         """
@@ -514,3 +555,12 @@ class SplitOperatorPDEModel():
             )
         dmat= dmat + nugget*diagpart(dmat)
         return dmat
+
+def build_batched_jac_func(batch_size= 500):
+    def jac(F):
+        def eval_jac(x):
+            fval,Jfunc = jax.linearize(F,x)
+            J = jax.lax.map(Jfunc,jnp.identity(len(x)), batch_size=batch_size).T
+            return J
+        return eval_jac
+    return jac
