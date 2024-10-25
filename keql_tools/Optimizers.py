@@ -431,6 +431,10 @@ def SketchedLM(
         convergence_results['iterate_history']=iterate_history
     return params,convergence_results
 
+import time
+from jax.scipy.sparse.linalg import cg
+from jax.scipy.linalg import solve,cho_factor,cho_solve
+
 def SketchedCG_LM(
         init_params,
         model,
@@ -483,8 +487,10 @@ def SketchedCG_LM(
 
     Returns
     -------
-    _type_
-        _description_
+    fitted_params
+        optimized parameters
+    convergence_data
+        dictionary of convergence data
     """
     start_time = time.time()
     params = init_params.copy()
@@ -513,30 +519,39 @@ def SketchedCG_LM(
         g = F_vjp(residuals)[0]
         return residuals,g,SJ
     
+    @jax.jit
+    def get_step(params,sketched_JtJ,alpha,damping_matrix,g,z):
+        full_gradient = g + beta * z
+        M = sketched_JtJ + (alpha + beta) * damping_matrix
+        chol = cho_factor(M)
+        init_step = cho_solve(chol,full_gradient)
+        # fvals,Jstep = jax.jvp(model.F,(params,),(init_step,))
+        # linear_residual = jax.vjp(model.F,params)[1](Jstep - fvals)[0] + beta * z - alpha*damping_matrix@step
+        # step = step - cho_solve(chol,linear_residual)
+        linop = (
+            lambda x:
+            jax.vjp(model.F,params)[1](jax.jvp(model.F,(params,),(x,))[1])[0] + alpha * damping_matrix@x
+        )
+        step,info = cg(linop,full_gradient,init_step,M = lambda x:cho_solve(chol,x),tol = 1e-1,maxiter = 50)
+
+        return step
+
+
     def LevenbergMarquadtUpdate(params,alpha,sketch):
         residuals,g,SJ = sketch_objective(params,sketch)
-
-        out,F_jvp = jax.linearize(model.F,params)
-
-        @jax.jit
-        def GN_mvp(v):
-            return jax.vjp(model.F,params)[1](F_jvp(v))[0]
-        
-
+        sketched_JtJ = SJ.T@SJ
         damping_matrix = model.damping_matrix(params)
-        loss = (1/2)*jnp.sum(residuals**2) + (1/2)*beta * params.T@damping_matrix@params
+        z = damping_matrix@params
+        loss = (1/2)*jnp.sum(residuals**2) + (1/2)*beta * params.T@z
+        full_gradient = g + beta * z
 
-        JtJ = SJ.T@SJ
-
-        #I differentiate these two because one is sketched
-        # rhs = SJ.T@residuals + beta * damping_matrix@params 
-        full_gradient = g + beta * damping_matrix@params
-
-        alpha =jnp.clip(alpha,min_alpha,max_alpha)
         for i in range(max_line_search_iterations):
-            M = JtJ + (alpha + beta) * damping_matrix
-            step_init = solve(M,full_gradient,assume_a = 'pos')
-            step,info = cg(A = lambda x:GN_mvp(x)+(alpha + beta)*x,x0 = step_init,M = M,maxiter = 10)
+            alpha =jnp.clip(alpha,min_alpha,max_alpha)
+
+            #Step Computation Here
+            step = get_step(params,sketched_JtJ,alpha,damping_matrix,g,z)
+            #Step computation end
+            
 
             new_params = params - step
             new_reg_norm = beta * new_params.T@damping_matrix@new_params
@@ -577,7 +592,6 @@ def SketchedCG_LM(
                 "armijo_ratios":improvement_ratios,
                 "alpha_vals":alpha_vals,
                 'time_spent':cumulative_time
-
             }
             return params,convergence_results
         cumulative_time.append(time.time()-start_time)
