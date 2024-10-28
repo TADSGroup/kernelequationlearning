@@ -4,34 +4,14 @@ from jax.scipy.sparse.linalg import cg
 from jax import jit
 from tqdm.auto import tqdm
 import time
+from dataclasses import dataclass, field
 
 
-def CholeskyLM(
-        init_params,
-        model,
-        beta,
-        max_iter = 200, tol = 1e-8,
-        cmin = 0.05,line_search_increase_ratio = 1.5,max_line_search_iterations = 20,
-        min_alpha = 1e-6,
-        max_alpha = 20.,
-        init_alpha = 3.,
-        step_adapt_multiplier = 1.2,
-        callback = None,
-        print_every = 50,
-        track_iterates = False
-        ):
-    """Adaptively regularized Levenberg Marquadt optimizer
-    TODO: Wrap up convergence data into a convergence_data dictionary or object
-    Parameters
-    ----------
-    init_params : jax array
-        initial guess
-    model :
-        Object that contains model.F, and model.jac, and model.damping_matrix
-    beta : float
-        (global) regularization strength
+@dataclass
+class CholLMParams:
+    """
     max_iter : int, optional
-        by default 200
+        by default 201
     tol : float, optional
         Gradient norm stopping tolerance
     cmin : float, optional
@@ -40,11 +20,11 @@ def CholeskyLM(
         constant to increase reg strength by in backtracking line search, by default 1.5
     max_line_search_iterations : int, optional
         by default 20
-    min_alpha : _type_, optional
+    min_alpha : float, optional
         min damping strength, by default 1e-6
-    max_alpha : _type_, optional
-        max damping strength, by default 20.
-    init_alpha : _type_, optional
+    max_alpha : float, optional
+        max damping strength, by default 50.
+    init_alpha : float, optional
         initial damping strength, by default 3.
     step_adapt_multipler : float, optional
         value to use for adapting alpha, by default 1.2
@@ -52,58 +32,162 @@ def CholeskyLM(
         function called to print another loss each iteration, by default None
     print_every : int, optional
         How often to print convergence data, by default 50
+    """
+    max_iter: int = 201
+    tol: float = 1e-8
+    cmin: float = 0.05
+    line_search_increase_ratio: float = 1.5
+    max_line_search_iterations: int = 20
+    min_alpha: float = 1e-6
+    max_alpha: float = 50.0
+    init_alpha: float = 3.0
+    step_adapt_multiplier: float = 1.2
+    callback: callable = None
+    print_every: int = 50
+    track_iterates: bool = False
+
+@dataclass
+class ConvergenceHistory:
+    track_iterates: bool = False
+    loss_vals: list = field(default_factory=list)
+    gradnorm: list = field(default_factory=list)
+    iterate_history: list = field(default_factory=list)
+    improvement_ratios: list = field(default_factory=list)
+    alpha_vals: list = field(default_factory=list)
+    cumulative_time: list = field(default_factory=list)
+    linear_system_rel_residual: list = field(default_factory=list)
+
+    def update(
+        self,
+        loss,
+        gradnorm,
+        iterate,
+        armijo_ratio,
+        alpha,
+        cumulative_time,
+        linear_system_rel_residual
+        ):
+        # Append the new values to the corresponding lists
+        self.loss_vals.append(loss)
+        self.gradnorm.append(gradnorm)
+        self.improvement_ratios.append(armijo_ratio)
+        self.alpha_vals.append(alpha)
+        self.cumulative_time.append(cumulative_time)
+        self.linear_system_rel_residual.append(linear_system_rel_residual)
+        
+        # Conditionally track iterates if enabled
+        if self.track_iterates:
+            self.iterate_history.append(iterate)
+
+    def finish(self):
+        # Convert lists to JAX arrays
+        self.loss_vals = jnp.array(self.loss_vals)
+        self.gradnorm = jnp.array(self.gradnorm)
+        self.improvement_ratios = jnp.array(self.improvement_ratios)
+        self.alpha_vals = jnp.array(self.alpha_vals)
+        self.cumulative_time = jnp.array(self.cumulative_time)
+        self.linear_system_rel_residual = jnp.array(self.linear_system_rel_residual)
+        if self.track_iterates:
+            self.iterate_history = jnp.array(self.iterate_history)
+
+def CholeskyLM(
+        init_params,
+        model,
+        beta,
+        optParams: CholLMParams = CholLMParams()
+        ):
+    """Adaptively regularized Levenberg Marquardt optimizer
+    Parameters
+    ----------
+    init_params : jax array
+        initial guess
+    model :
+        Object that contains model.F, and model.jac, and model.damping_matrix
+    beta : float
+        (global) regularization strength
+    optParams: LMParams
+        optimizer hyperparameters
 
     Returns
     -------
-    _type_
-        _description_
+    solution
+        approximate minimizer
+    convergence_dict
+        dictionary of data tracking convergence
     """
+    conv_history = ConvergenceHistory(optParams.track_iterates)
     start_time = time.time()
     params = init_params.copy()
     J = model.jac(params)
     residuals = model.F(params)
     damping_matrix = model.damping_matrix(params)
-    loss_vals = [
-        (1/2)*jnp.sum(residuals**2) + (1/2)*beta * params.T@damping_matrix@params
-    ]
-    JtRes = [jnp.linalg.norm(J.T@residuals + beta * damping_matrix@params)]
-    iterate_history = [params]
-    improvement_ratios = []
-    alpha_vals = []
-    cumulative_time = []
-    alpha = init_alpha
+    alpha = optParams.init_alpha
 
-    def LevenbergMarquadtUpdate(params,alpha):
+    conv_history.update(
+        loss = (1/2)*jnp.sum(residuals**2) + (1/2)*beta * params.T@damping_matrix@params,
+        gradnorm = jnp.linalg.norm(J.T@residuals + beta * damping_matrix@params),
+        iterate = params,
+        armijo_ratio = 1.,
+        alpha = alpha,
+        cumulative_time = time.time() - start_time,
+        linear_system_rel_residual=0.
+    )
+
+    # TODO: This pair of functions can be handled more elegantly
+    # Make something like an objective_data object
+    @jax.jit
+    def evaluate_objective(params):
         J = model.jac(params)
         residuals = model.F(params)
         damping_matrix = model.damping_matrix(params)
         loss = (1/2)*jnp.sum(residuals**2) + (1/2)*beta * params.T@damping_matrix@params
-
         JtJ = J.T@J
         rhs = J.T@residuals + beta * damping_matrix@params
-        alpha =jnp.clip(alpha,min_alpha,max_alpha)
-        for i in range(max_line_search_iterations):
-            M = JtJ + (alpha + beta) * damping_matrix
-            step = solve(M,rhs,assume_a = 'pos')
-            new_params = params - step
-            new_reg_norm = beta * new_params.T@damping_matrix@new_params
-            new_loss = (1/2)*(jnp.sum(model.F(new_params)**2) + new_reg_norm)
-            predicted_loss = (1/2)*(jnp.sum((J@step-residuals)**2) + new_reg_norm)
-            improvement_ratio = (loss - new_loss)/(loss - predicted_loss)
+        return J,residuals,damping_matrix,loss,JtJ,rhs
+    
+    @jax.jit
+    def compute_step(params,alpha,J,JtJ,residuals,rhs,previous_loss,damping_matrix):
+        #Form and solve linear system for step
+        M = JtJ + (alpha + beta) * damping_matrix
+        Mchol = jax.scipy.linalg.cho_factor(M)
+        step = jax.scipy.linalg.cho_solve(Mchol,rhs)
+        Jstep = J@step
 
-            if improvement_ratio >= cmin:
+        #Track the linear system residual
+        linear_residual = J.T@(Jstep - residuals) + (alpha+beta) * damping_matrix@step - beta * damping_matrix@params
+        linear_system_rel_residual = (
+            jnp.linalg.norm(linear_residual)/jnp.linalg.norm(rhs)
+        )
+
+        #Compute step and if we decreased loss
+        new_params = params - step
+        new_reg_norm = beta * new_params.T@damping_matrix@new_params
+        new_loss = (1/2)*(jnp.sum(model.F(new_params)**2) + new_reg_norm)
+        predicted_loss = (1/2)*(jnp.sum((Jstep-residuals)**2) + new_reg_norm)
+        improvement_ratio = (previous_loss - new_loss)/(previous_loss - predicted_loss)
+
+        return step,new_params,new_loss,improvement_ratio,linear_system_rel_residual
+
+    def LevenbergMarquadtUpdate(params,alpha):
+        J,residuals,damping_matrix,loss,JtJ,rhs = evaluate_objective(params)
+        alpha =jnp.clip(alpha,optParams.min_alpha,optParams.max_alpha)
+        for i in range(optParams.max_line_search_iterations):
+            step,new_params,new_loss,improvement_ratio,linear_system_rel_residual = (
+                compute_step(params,alpha,J,JtJ,residuals,rhs,loss,damping_matrix)
+            )
+            if improvement_ratio >= optParams.cmin:
                 #Check if we get at least some proportion of predicted improvement from local model
                 succeeded = True
-                return new_params, new_loss, rhs, improvement_ratio,alpha,succeeded
+                return new_params, new_loss, rhs, improvement_ratio,alpha,linear_system_rel_residual,succeeded
             else:
-                alpha = line_search_increase_ratio * alpha
+                alpha = optParams.line_search_increase_ratio * alpha
             succeeded = False
-        return new_params, new_loss, rhs, improvement_ratio,alpha,succeeded
+        return new_params, new_loss, rhs, improvement_ratio,alpha,linear_system_rel_residual,succeeded
 
-    for i in tqdm(range(max_iter)):
-        params,loss,rhs,improvement_ratio,alpha,succeeded = LevenbergMarquadtUpdate(params,alpha)
+    for i in tqdm(range(optParams.max_iter)):
+        params,loss,rhs,improvement_ratio,alpha,linear_system_rel_residual,succeeded = LevenbergMarquadtUpdate(params,alpha)
         # Get new value for alpha
-        multiplier = step_adapt_multiplier
+        multiplier = optParams.step_adapt_multiplier
         if improvement_ratio <= 0.2:
             alpha = multiplier * alpha
         if improvement_ratio >= 0.8:
@@ -112,38 +196,36 @@ def CholeskyLM(
         if succeeded==False:
             print("Line Search Failed!")
             print("Final Iteration Results")
-            print(f"Iteration {i}, loss = {loss:.4}, Jres = {JtRes[-1]:.4}, alpha = {alpha:.4}")
-            convergence_results = {
-                "loss_vals":loss_vals,
-                "norm_JtRes":JtRes,
-                "armijo_ratios":improvement_ratios,
-                "alpha_vals":alpha_vals,
+            print(
+                f"Iteration {i}, loss = {loss:.4},"
+                f" gradnorm = {conv_history.gradnorm[-1]:.4}, alpha = {alpha:.4},"
+                f" improvement_ratio = {improvement_ratio:.4}"
+                )
+            conv_history.finish()
+            return params,conv_history
 
-            }
-            return params,convergence_results
-        cumulative_time.append(time.time()-start_time)
-        loss_vals += [loss]
-        JtRes += [jnp.linalg.norm(rhs)]
-        iterate_history += [params]
-        improvement_ratios +=[improvement_ratio]
-        alpha_vals +=[alpha]
-        if JtRes[-1]<=tol:
+        conv_history.update(
+            loss = loss,
+            gradnorm = jnp.linalg.norm(rhs),
+            iterate = params,
+            armijo_ratio = improvement_ratio,
+            alpha = alpha,
+            cumulative_time = time.time() - start_time,
+            linear_system_rel_residual = linear_system_rel_residual
+        )
+
+        if conv_history.gradnorm[-1]<=optParams.tol:
             break
-
-        if i%print_every ==0 or i<=5:
-            print(f"Iteration {i}, loss = {loss:.4}, Jres = {JtRes[-1]:.4}, alpha = {alpha:.4}, improvement_ratio = {improvement_ratio:.4}")
-            if callback:
-                callback(params)
-    convergence_results = {
-        "loss_vals":loss_vals,
-        "norm_JtRes":JtRes,
-        "armijo_ratios":improvement_ratios,
-        "alpha_vals":alpha_vals,
-        'time_spent':cumulative_time
-    }
-    if track_iterates is True:
-        convergence_results['iterate_history']=iterate_history
-    return params,convergence_results
+        if i%optParams.print_every ==0 or i<=5 or i == optParams.max_iter:
+            print(
+                f"Iteration {i}, loss = {loss:.4},"
+                f" gradnorm = {conv_history.gradnorm[-1]:.4}, alpha = {alpha:.4},"
+                f" improvement_ratio = {improvement_ratio:.4}"
+                )
+            if optParams.callback:
+                optParams.callback(params)
+    conv_history.finish()
+    return params,conv_history
 
 
 @jit
