@@ -35,16 +35,23 @@ def get_darcy_solver(
     Kphiphi = jnp.block(Kphiphi_blocks)
     num_refinements = 4
     chol = cho_factor(Kphiphi + nugget * diagpart(Kphiphi))
-    def solve_darcy(f):
-        fvals = jax.vmap(f)(xy_int)
+
+    @jax.jit
+    def get_alpha(fvals):
         rhs = jnp.hstack([jnp.zeros(len(xy_bdy)),fvals])
-        residual_norms = []
+        # residual_norms = []
         alpha = cho_solve(chol,rhs)
         residual = rhs - Kphiphi@alpha
         for i in range(num_refinements):
             alpha = alpha + cho_solve(chol,residual)
             residual = rhs - Kphiphi@alpha
-            residual_norms.append(jnp.linalg.norm(residual))
+            # residual_norms.append(jnp.linalg.norm(residual))
+        return alpha
+
+
+    def solve_darcy(f):
+        fvals = jax.vmap(f)(xy_int)
+        alpha = get_alpha(fvals)
 
         def u(x):
             kxphi = jnp.hstack([

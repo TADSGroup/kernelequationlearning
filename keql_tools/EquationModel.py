@@ -179,6 +179,9 @@ class InducedOperatorModel():
     def get_damping(self):
         return jnp.identity(self.num_params)
 
+    def rkhs_mat(self,X):
+        return jnp.identity(self.num_params)
+
 
 class CholOperatorModel():
     def __init__(
