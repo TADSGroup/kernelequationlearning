@@ -1,7 +1,6 @@
 HessAnalyze.py
 KernelTools.py
 Kernels.py
-LM_Solve.py
 setup.py
 keql_tools.egg-info/PKG-INFO
 keql_tools.egg-info/SOURCES.txt
