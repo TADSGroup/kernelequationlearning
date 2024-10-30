@@ -1,6 +1,0 @@
-BurgerSolver
-HessAnalyze
-KernelTools
-Kernels
-Optimizers
-darcySolver
