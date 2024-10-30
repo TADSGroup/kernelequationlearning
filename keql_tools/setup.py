@@ -9,6 +9,10 @@ setup(
         "BurgerSolver",
         "darcySolver",
         "HessAnalyze",
-        "Kernels"
+        "Kernels",
+        "data_utils",
+        "EquationModel",
+        "plotting",
+        "parabolic_data_utils",
         ]
 )

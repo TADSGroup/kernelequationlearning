@@ -80,12 +80,16 @@ def build_tx_grid(t_range,x_range,num_grid_t,num_grid_x):
     tx_boundary = jnp.vstack([t.flatten(),x.flatten()]).T
     return tx_interior,tx_boundary
 
-def build_tx_grid_chebyshev(t_range,x_range,num_grid_t,num_grid_x,alpha = 0.5):
-    full_t_grid = jnp.linspace(t_range[0],t_range[1],num_grid_t)
-    nodes = jnp.cos(jnp.pi*(2*jnp.arange(0,num_grid_x,1)[::-1])/(2*(num_grid_x-1)))
-    reg_grid = jnp.linspace(-1,1,num_grid_x)
+def build_alpha_chebyshev(x_range,num_grid,alpha):
+    nodes = jnp.cos(jnp.pi*(2*jnp.arange(0,num_grid,1)[::-1])/(2*(num_grid-1)))
+    reg_grid = jnp.linspace(-1,1,num_grid)
     nodes = alpha * nodes + (1-alpha) * reg_grid
     full_x_grid = (nodes  + (x_range[0]+1))/(2*(x_range[1]-x_range[0]))
+    return full_x_grid
+
+def build_tx_grid_chebyshev(t_range,x_range,num_grid_t,num_grid_x,alpha = 0.5):
+    full_t_grid = jnp.linspace(t_range[0],t_range[1],num_grid_t)
+    full_x_grid = build_alpha_chebyshev(x_range,num_grid_x,alpha)
     x_interior = full_x_grid[1:-1]
     x_boundary = full_x_grid[jnp.array([0,-1])]
 

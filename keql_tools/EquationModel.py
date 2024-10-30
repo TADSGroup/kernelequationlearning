@@ -348,6 +348,191 @@ class OperatorPDEModel():
             )
         dmat= dmat + nugget*diagpart(dmat)
         return dmat
+    
+class SharedOperatorPDEModel():
+    def __init__(
+        self,
+        operator_model,
+        u_model:CholInducedRKHS,
+        observation_points:tuple,
+        observation_values:tuple,
+        collocation_points:tuple,
+        feature_operators:tuple,
+        rhs_forcing_values:Optional[tuple]=None,
+        rhs_operator=None,
+        datafit_weight = 10,
+        jacobian_operator = jax.jacrev,
+        num_P_operator_params = None
+    ):
+        self.num_functions = len(observation_points)
+        if rhs_forcing_values is None:
+            rhs_forcing_values = tuple(jnp.zeros(len(col_points)) for col_points in collocation_points)
+        self.u_model = u_model
+        self.operator_model = operator_model
+        self.residual_dimension = sum([len(a) for a in observation_points]) + sum([len(a) for a in collocation_points])
+
+        if num_P_operator_params is None:
+            self.num_operator_params = sum(map(len,collocation_points))
+        else:
+            self.num_operator_params = num_P_operator_params
+        self.observation_points = observation_points
+        self.observation_values = observation_values
+        self.collocation_points = collocation_points
+        self.rhs_forcing_values = rhs_forcing_values
+        self.feature_operators = feature_operators
+        self.datafit_weight = datafit_weight
+        self.jacobian_operator = jacobian_operator
+
+        self.rhs_operator = rhs_operator
+
+        self.stacked_observation_values = jnp.hstack(observation_values)
+        self.stacked_collocation_rhs = jnp.hstack(rhs_forcing_values)
+        
+        #Precompute parameter indices to pull out different parameter blocks
+        self.total_parameters = len(observation_points)*u_model.num_params + self.num_operator_params
+        
+        #Assume we put the parameters for the operators at the start of the flattened parameter set
+        self.operator_model_indices = jnp.arange(self.total_parameters - self.num_operator_params,self.total_parameters)
+
+        #Compute the start and end indices of the parameter sets for u_models
+        u_param_inds = jnp.cumsum(jnp.array([0]+[self.u_model.num_params]*self.num_functions))
+        self.u_indexing = [
+            jnp.arange(p,q) for p,q in zip(u_param_inds[:-1],u_param_inds[1:])
+        ]
+
+    def get_P_params(self,all_params):
+        """
+        Extract parameters associated to P from the stacked all_params
+        """
+        return all_params[self.operator_model_indices]
+    
+    def get_u_params(self,all_params):
+        """
+        Extract the parameters associated to 
+        interpolating each function from stacked all_params
+        """
+        return tuple(all_params[ind_set] for ind_set in self.u_indexing)
+    
+    def apply_rhs_op_single(self,u_params,evaluation_points):
+        """
+        Applies the previously specified fixed RHS operator to all of 
+        u_model parameterized by u_params at evalutaion_points
+        """
+        if self.rhs_operator is None:
+            return jnp.zeros(len(evaluation_points))
+        else:
+            op_evaluation = self.u_model.evaluate_operators((self.rhs_operator,),evaluation_points,u_params)
+            return op_evaluation.flatten()
+    
+    @partial(jit, static_argnames=['self'])
+    def single_eqn_features(
+        self,
+        u_params,
+        evaluation_points,
+        ):
+        """
+        Computes features as input to P_operator_model
+        """
+        num_points = len(evaluation_points)
+        num_ops = len(self.feature_operators)
+        op_evaluation = self.u_model.evaluate_operators(self.feature_operators,evaluation_points,u_params)
+        u_op_features = op_evaluation.reshape(num_points,num_ops,order = 'F')
+        full_features = jnp.hstack([evaluation_points,u_op_features])
+        return full_features
+    
+    def equation_residual_single(
+        self,
+        u_params,
+        P_params,
+        evaluation_points,
+        rhs_forcing
+    ):
+        """
+        Computes the equation residual associated to 
+        u_model parametrized by u_params,
+        P_operator_model parametrized by P_params
+
+        based on (rhs_operator(u) + rhs_forcing) at evaluation_points
+        """
+        features = self.single_eqn_features(u_params,evaluation_points)
+        P_predictions = self.operator_model.predict(features,P_params)
+        rhs_values = self.apply_rhs_op_single(u_params,evaluation_points) + rhs_forcing
+        return rhs_values - P_predictions
+
+    def stacked_equation_residual(
+        self,
+        all_u_params:tuple,
+        P_params:jax.Array
+    ):
+        return jnp.hstack(
+            [
+                self.equation_residual_single(
+                    u_params,P_params,eval_points,rhs_forcing
+                    ) for 
+                    u_params,eval_points,rhs_forcing in zip(
+                        all_u_params,
+                        self.collocation_points,
+                        self.rhs_forcing_values
+                        )
+                ]
+                )
+
+    def datafit_residual_single(
+        self,
+        u_params,
+        obs_points,
+        obs_vals,
+        ):
+        return obs_vals - self.u_model.point_evaluate(obs_points,u_params)
+    
+    def stacked_datafit_residual(
+        self,
+        all_u_params:tuple
+    ):
+        return jnp.hstack(
+            [
+                self.datafit_residual_single(u_params,obs_points,obs_vals)
+                for u_params,obs_points,obs_vals in zip(all_u_params,self.observation_points,self.observation_values)
+                ]
+        )
+    
+    def F(self,full_params):
+        all_u_params = self.get_u_params(full_params)
+        P_params = self.get_P_params(full_params)
+        eqn_res = self.stacked_equation_residual(all_u_params,P_params)
+        data_res = self.stacked_datafit_residual(all_u_params)
+        return jnp.hstack([
+            jnp.sqrt(self.datafit_weight) * data_res/jnp.sqrt(len(data_res)),
+            eqn_res/jnp.sqrt(len(eqn_res))
+            ])
+    
+    @partial(jit, static_argnames=['self'])
+    def jac(self,full_params):
+        """This is to allow for custom jacobian operators, and a choice
+        between forward and reverse mode autodiff.
+        In particular, we may want batched map based JVP
+        """
+        return self.jacobian_operator(self.F)(full_params)
+        
+    #usually jacrev is faster than jacfwd on examples I've tested
+    # jac = jit(jacrev(F,argnums = 1),static_argnames='self')
+
+    def loss(self,full_params):
+        """
+        TODO: Include the regularization term here instead of in EqnModel"""
+        return (1/2) * jnp.linalg.norm(self.F(full_params))**2
+    
+    def damping_matrix(self,full_params,nugget = 1e-3):
+        u_params = self.get_u_params(full_params)
+        grid_feats = jnp.vstack([self.single_eqn_features(u_params,eval_points) for 
+                                 u_params,eval_points in zip(
+                                    u_params,self.collocation_points)])
+        dmat = block_diag(
+            *([self.u_model.get_damping()]*self.num_functions+[self.operator_model.rkhs_mat(grid_feats)])
+            )
+        dmat= dmat + nugget*diagpart(dmat)
+        return dmat
+
 
 def build_batched_jac_func(batch_size= 500):
     def jac(F):
