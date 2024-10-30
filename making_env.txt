@@ -1,0 +1,4 @@
+conda install pip
+pip install -U "jax[cuda12]"
+pip install matplotlib numpy scipy tqdm
+pip install -e keql_tools
