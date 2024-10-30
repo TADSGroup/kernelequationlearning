@@ -93,31 +93,64 @@ def l2reg_lstsq(A, y, reg=1e-10):
     U,sigma,Vt = jnp.linalg.svd(A, full_matrices=False)
     return Vt.T@((sigma/(sigma**2+reg))*(U.T@y))
 
-def run_jaxopt(solver,x0):
+
+@dataclass
+class JaxoptHistory():
+    track_iterates: bool = False
+    loss_vals: list = field(default_factory=list)
+    gradnorm: list = field(default_factory=list)
+    iterate_history: list = field(default_factory=list)
+    cumulative_time: list = field(default_factory=list)
+    stepsizes: list = field(default_factory=list)
+
+    def update(
+        self,
+        loss,
+        gradnorm,
+        iterate,
+        cumulative_time,
+        stepsize,
+        ):
+        # Append the new values to the corresponding lists
+        self.loss_vals.append(loss)
+        self.gradnorm.append(gradnorm)
+        self.cumulative_time.append(cumulative_time)
+        self.stepsizes.append(stepsize)
+        
+        # Conditionally track iterates if enabled
+        if self.track_iterates:
+            self.iterate_history.append(iterate)
+
+    def finish(self):
+        # Convert lists to JAX arrays
+        self.loss_vals = jnp.array(self.loss_vals)
+        self.gradnorm = jnp.array(self.gradnorm)
+        self.cumulative_time = jnp.array(self.cumulative_time)
+        self.stepsizes = jnp.array(self.stepsizes)
+        if self.track_iterates:
+            self.iterate_history = jnp.array(self.iterate_history)
+
+def run_jaxopt(solver,x0,track_iterates = False):
     state = solver.init_state(x0)
     sol = x0
-    values,errors,stepsizes = [state.value],[state.error],[state.stepsize]
+    history = JaxoptHistory(track_iterates=track_iterates)
+    history.update(state.value,state.error,sol,0.,state.stepsize)
     update = lambda sol,state:solver.update(sol,state)
     jitted_update = jax.jit(update)
     for iter_num in tqdm(range(solver.maxiter)):
         sol,state = jitted_update(sol,state)
-        values.append(state.value)
-        errors.append(state.error)
-        stepsizes.append(state.stepsize)
+        history.update(state.value,state.error,sol,0.,state.stepsize)
+
         if solver.verbose > 0:
             print("Gradient Norm: ",state.error)
             print("Loss Value: ",state.value)
         if state.error<=solver.tol:
             break
-        if stepsizes[-1]==0:
+        if history.stepsizes[-1]==0:
             print("Restart")
             state = solver.init_state(sol)
-    convergence_data = {
-        "values":jnp.array(values),
-        "gradnorms":jnp.array(errors),
-        "stepsizes":jnp.array(stepsizes)
-    }
-    return sol,convergence_data,state
+    history.finish()
+    return sol,history,state
 
 def pad_1025(A):
     padding_shape = jnp.array(A.shape)

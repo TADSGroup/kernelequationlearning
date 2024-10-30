@@ -4,6 +4,7 @@ import jax
 from functools import partial
 from KernelTools import get_kernel_block_ops,eval_k,diagpart,vectorize_kfunc
 from jax.scipy.linalg import block_diag,cholesky,solve_triangular
+from Optimizers import l2reg_lstsq
 from typing import Optional
 
 class InducedRKHS():
@@ -85,11 +86,10 @@ class CholInducedRKHS():
     def evaluate_operators(self,operators,eval_points,params):
         return get_kernel_block_ops(self.k,operators,self.operators)(eval_points,self.basis_points)@solve_triangular(self.cholT,params)
     
-    def get_fitted_params(self,X,y,lam = 1e-6,eps = 1e-4):
+    def get_fitted_params(self,X,y,lam = 1e-6):
         K = self.get_eval_op_kernel_matrix(X,self.basis_points)
-        alpha_coeffs = jax.scipy.linalg.solve(K.T@K + lam * (self.kmat+eps * diagpart(self.kmat)),K.T@y,assume_a = 'pos')
-        params = self.cholT@alpha_coeffs
-        return params
+        M = solve_triangular(self.cholT.T,K.T,lower = True).T
+        return l2reg_lstsq(M,y,reg = lam)
     
     def get_eval_function(self,params):
         def u(x):
@@ -168,13 +168,12 @@ class InducedOperatorModel():
     @partial(jit, static_argnames=['self'])
     def predict(self,eval_points,params):
         return self.kvec(eval_points,self.basis_points)@solve_triangular(self.cholT,params)
-        
-    def get_fitted_params(self,X,y,lam = 1e-6,eps = 1e-4):
+    
+    def get_fitted_params(self,X,y,lam = 1e-6):
         K = self.kvec(X,self.basis_points)
-        ## TODO do this least squares solve better
-        alpha_coeffs = jax.scipy.linalg.solve(K.T@K + lam * (self.kmat+eps * diagpart(self.kmat)),K.T@y,assume_a = 'pos')
-        params = self.cholT@alpha_coeffs
-        return params
+        M = solve_triangular(self.cholT.T,K.T,lower = True).T
+        return l2reg_lstsq(M,y,reg = lam)
+
         
     def get_damping(self):
         return jnp.identity(self.num_params)
