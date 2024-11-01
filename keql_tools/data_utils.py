@@ -77,11 +77,15 @@ def build_xy_grid(x_range,y_range,num_grid_x,num_grid_y):
     full_x_grid = jnp.linspace(x_range[0],x_range[1],num_grid_x)
     full_y_grid = jnp.linspace(y_range[0],y_range[1],num_grid_y)
 
-    x_interior = full_x_grid[1:-1]
-    y_interior = full_y_grid[1:-1]
+    xy_interior,xy_boundary = make_grids(full_x_grid,full_y_grid)
+    return xy_interior,xy_boundary
+
+def make_grids(xgrid,ygrid):
+    x_interior = xgrid[1:-1]
+    y_interior = ygrid[1:-1]
     
-    x_boundary = full_x_grid[jnp.array([0,-1])]
-    y_boundary = full_y_grid[jnp.array([0,-1])]
+    x_boundary = xgrid[jnp.array([0,-1])]
+    y_boundary = ygrid[jnp.array([0,-1])]
 
     #Get interior points
     x,y = jnp.meshgrid(x_interior,y_interior)
@@ -100,6 +104,7 @@ def build_xy_grid(x_range,y_range,num_grid_x,num_grid_y):
 
     xy_boundary = jnp.vstack([xy_boundary_1,xy_boundary_2,xy_boundary_3])
     return xy_interior,xy_boundary
+
 
 # Build interior and boundary grids
 def sample_xy_grid_latin(
