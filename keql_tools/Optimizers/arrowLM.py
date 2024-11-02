@@ -6,11 +6,68 @@ from dataclasses import dataclass, field
 from .solvers_base import LMParams,ConvergenceHistory
 from EquationModel import SharedOperatorPDEModel
 import jax
+from functools import partial
+
+def setup_arrow_functions(model,beta_reg_u,beta_reg_P,datafit_weight):
+    def single_function_residuals(
+        u_param,
+        P_params,
+        single_collocation_points,
+        single_rhs,
+        single_observation_points,
+        single_observation_values,
+    ):
+        datafit_res = model.datafit_residual_single(
+            u_param,
+            single_observation_points,
+            single_observation_values,
+        )
+        eqn_res = model.equation_residual_single(
+            u_param,
+            P_params,
+            single_collocation_points,
+            single_rhs
+        )
+        return jnp.hstack([datafit_res*jnp.sqrt(datafit_weight/len(datafit_res)),eqn_res/jnp.sqrt(len(eqn_res))])
+
+    stacked_colloc = jnp.stack(model.collocation_points)
+    stacked_rhs = jnp.stack(model.rhs_forcing_values)
+    stacked_obs_points = jnp.stack(model.observation_points)
+    stacked_obs_values = jnp.stack(model.observation_values)
+    data_args = [stacked_colloc,stacked_rhs,stacked_obs_points,stacked_obs_values]
+    u_vmap_axes = (0,None,0,0,0,0)
+
+    @jax.jit
+    @partial(jax.value_and_grad,argnums = (0,1))
+    def full_loss_valgrad(u_params,P_params):
+        residuals = (
+            jax.vmap(
+                single_function_residuals,in_axes = u_vmap_axes
+                )(
+                    u_params,P_params,
+                    *data_args
+                    )
+        )
+        return (
+            jnp.sum(residuals**2) + 
+            beta_reg_P * jnp.sum(P_params**2) + 
+            beta_reg_u * jnp.sum(jnp.mean(u_params**2,axis=1)
+                                )
+        )
+    jacU = jax.vmap(
+        jax.jacrev(single_function_residuals,argnums = 0),in_axes=u_vmap_axes
+    )
+    jacP = jax.vmap(
+        jax.jacrev(single_function_residuals,argnums = 1),in_axes=u_vmap_axes
+    )
+    return full_loss_valgrad,single_function_residuals,jacU,jacP
+
 
 def BlockArrowLM(
         init_params,
         model:SharedOperatorPDEModel,
-        beta:float = 1e-12,
+        beta_reg_u:float = 1e-12,
+        beta_reg_P:float = 1e-12,
         optParams: LMParams = LMParams()
         ):
     """Adaptively regularized Levenberg Marquardt optimizer
@@ -35,6 +92,7 @@ def BlockArrowLM(
     conv_history = ConvergenceHistory(optParams.track_iterates)
     start_time = time.time()
     params = init_params.copy()
+
     J = model.jac(params)
     residuals = model.F(params)
     damping_matrix = model.damping_matrix(params)
@@ -50,8 +108,6 @@ def BlockArrowLM(
         linear_system_rel_residual=0.
     )
 
-    # TODO: This pair of functions can be handled more elegantly
-    # Make something like an objective_data object
     @jax.jit
     def evaluate_objective(params):
         J = model.jac(params)
