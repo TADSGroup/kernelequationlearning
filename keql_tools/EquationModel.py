@@ -502,8 +502,8 @@ class SharedOperatorPDEModel():
         eqn_res = self.stacked_equation_residual(all_u_params,P_params)
         data_res = self.stacked_datafit_residual(all_u_params)
         return jnp.hstack([
-            jnp.sqrt(self.datafit_weight) * data_res/jnp.sqrt(len(data_res)),
-            eqn_res/jnp.sqrt(len(eqn_res))
+            jnp.sqrt(self.datafit_weight/len(data_res)) * data_res,
+            jnp.sqrt(1/len(eqn_res)) * eqn_res
             ])
     
     @partial(jit, static_argnames=['self'])

@@ -13,7 +13,7 @@ class LMParams:
     tol : float, optional
         Gradient norm stopping tolerance
     cmin : float, optional
-        Minimum armijo ratio to accept step, by default 0.1
+        Minimum armijo ratio to accept step, by default 0.05
     line_search_increase_ratio : float, optional
         constant to increase reg strength by in backtracking line search, by default 1.5
     max_line_search_iterations : int, optional
