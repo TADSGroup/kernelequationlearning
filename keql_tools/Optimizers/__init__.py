@@ -9,11 +9,16 @@ from .alternating import (
     AndersonAlternatingLM,
     AndersonConvergenceHistory
 )
+from .arrowLM import (
+    setup_arrow_functions,
+    BlockArrowLM
+)
 
 __all__ = ['LMParams', 'ConvergenceHistory', 'run_jaxopt',
     'CholeskyLM','SVD_LM',
     'SketchedCGLM','SketchedLM','SketchedLMParams','plot_optimization_results',
     'oldSVDRefinement','l2reg_lstsq',
     "AlternatingConvergenceHistory","AltLMParams","AlternatingLM",
-    "AndersonAltLMParams","AndersonAlternatingLM","AndersonConvergenceHistory"
-    ]
+    "AndersonAltLMParams","AndersonAlternatingLM","AndersonConvergenceHistory",
+    "setup_arrow_functions","BlockArrowLM"
+]
