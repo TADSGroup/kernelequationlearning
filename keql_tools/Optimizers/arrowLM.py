@@ -4,11 +4,12 @@ from tqdm.auto import tqdm
 import time
 from dataclasses import dataclass, field
 from Optimizers.solvers_base import LMParams,ConvergenceHistory
-from EquationModel import SharedOperatorPDEModel
 import jax
 from functools import partial
 
 def setup_arrow_functions(model,beta_reg_u,beta_reg_P,datafit_weight):
+    model_obs_scaling = 1/jnp.sqrt(sum(jax.vmap(len)(model.observation_points)))
+    model_colloc_scaling = 1/jnp.sqrt(sum(jax.vmap(len)(model.collocation_points)))
     def single_function_residuals(
         u_param,
         P_params,
@@ -22,13 +23,15 @@ def setup_arrow_functions(model,beta_reg_u,beta_reg_P,datafit_weight):
             single_observation_points,
             single_observation_values,
         )
+        datafit_res = datafit_res*jnp.sqrt(datafit_weight)*model_obs_scaling
         eqn_res = model.equation_residual_single(
             u_param,
             P_params,
             single_collocation_points,
             single_rhs
         )
-        return jnp.hstack([datafit_res*jnp.sqrt(datafit_weight/len(datafit_res)),eqn_res/jnp.sqrt(len(eqn_res))])
+        eqn_res = eqn_res*model_colloc_scaling
+        return jnp.hstack([datafit_res,eqn_res])
 
     stacked_colloc = jnp.stack(model.collocation_points)
     stacked_rhs = jnp.stack(model.rhs_forcing_values)
@@ -72,7 +75,7 @@ def setup_arrow_functions(model,beta_reg_u,beta_reg_P,datafit_weight):
 def BlockArrowLM(
         u_init,
         P_init,
-        model:SharedOperatorPDEModel,
+        model,
         beta_reg_u:float = 1e-12,
         beta_reg_P:float = 1e-12, 
         optParams: LMParams = LMParams() 

@@ -4,6 +4,7 @@ import jax
 from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 plt.style.use("ggplot")
+import time
 
 @dataclass
 class LMParams:
@@ -131,6 +132,7 @@ class JaxoptHistory():
             self.iterate_history = jnp.array(self.iterate_history)
 
 def run_jaxopt(solver,x0,track_iterates = False):
+    start_time = time.time()
     state = solver.init_state(x0)
     sol = x0
     history = JaxoptHistory(track_iterates=track_iterates)
@@ -139,7 +141,7 @@ def run_jaxopt(solver,x0,track_iterates = False):
     jitted_update = jax.jit(update)
     for iter_num in tqdm(range(solver.maxiter)):
         sol,state = jitted_update(sol,state)
-        history.update(state.value,state.error,sol,0.,state.stepsize)
+        history.update(state.value,state.error,sol,time.time() - start_time,state.stepsize)
 
         if solver.verbose > 0:
             print("Gradient Norm: ",state.error)
