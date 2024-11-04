@@ -44,6 +44,8 @@ class LMParams:
     callback: callable = None
     print_every: int = 50
     track_iterates: bool = False
+    show_progress: bool = True
+    use_jit: bool = True
 
 @dataclass
 class ConvergenceHistory:

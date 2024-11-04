@@ -6,6 +6,18 @@ from dataclasses import dataclass, field
 from .solvers_base import LMParams,ConvergenceHistory
 import jax
 
+def print_progress(
+    i,
+    loss,
+    gradnorm,
+    alpha,
+    improvement_ratio,
+):
+    print(  f"Iteration {i}, loss = {loss:.4},"
+            f" gradnorm = {gradnorm:.4}, alpha = {alpha:.4},"
+            f" improvement_ratio = {improvement_ratio:.4}"
+            )
+
 def CholeskyLM(
         init_params,
         model,
@@ -38,6 +50,10 @@ def CholeskyLM(
     residuals = model.F(params)
     damping_matrix = model.damping_matrix(params)
     alpha = optParams.init_alpha
+    if optParams.show_progress is True:
+        loop_wrapper = tqdm
+    else:
+        loop_wrapper = lambda x:x
 
     conv_history.update(
         loss = (1/2)*jnp.sum(residuals**2) + (1/2)*beta * params.T@damping_matrix@params,
@@ -49,9 +65,6 @@ def CholeskyLM(
         linear_system_rel_residual=0.
     )
 
-    # TODO: This pair of functions can be handled more elegantly
-    # Make something like an objective_data object
-    @jax.jit
     def evaluate_objective(params):
         J = model.jac(params)
         residuals = model.F(params)
@@ -60,6 +73,9 @@ def CholeskyLM(
         JtJ = J.T@J
         rhs = J.T@residuals + beta * damping_matrix@params
         return J,residuals,damping_matrix,loss,JtJ,rhs
+    
+    if optParams.use_jit is True:
+        evaluate_objective = jax.jit(evaluate_objective)
     
     @jax.jit
     def compute_step(params,alpha,J,JtJ,residuals,rhs,previous_loss,damping_matrix):
@@ -104,7 +120,7 @@ def CholeskyLM(
             succeeded = False
         return new_params, new_loss, rhs, improvement_ratio,alpha,linear_system_rel_residual,succeeded
 
-    for i in tqdm(range(optParams.max_iter)):
+    for i in loop_wrapper(range(optParams.max_iter)):
         params,loss,rhs,improvement_ratio,alpha,linear_system_rel_residual,succeeded = (
             LevenbergMarquadtUpdate(params,alpha)
         )
@@ -118,11 +134,8 @@ def CholeskyLM(
         if succeeded==False:
             print("Line Search Failed!")
             print("Final Iteration Results")
-            print(
-                f"Iteration {i}, loss = {loss:.4},"
-                f" gradnorm = {conv_history.gradnorm[-1]:.4}, alpha = {alpha:.4},"
-                f" improvement_ratio = {improvement_ratio:.4}"
-                )
+            if optParams.show_progress is True:
+                print_progress(i,loss,conv_history.gradnorm[-1],alpha,improvement_ratio)
             conv_history.finish()
             return params,conv_history
 
@@ -139,11 +152,8 @@ def CholeskyLM(
         if conv_history.gradnorm[-1]<=optParams.tol:
             break
         if i%optParams.print_every ==0 or i<=5 or i == optParams.max_iter:
-            print(
-                f"Iteration {i}, loss = {loss:.4},"
-                f" gradnorm = {conv_history.gradnorm[-1]:.4}, alpha = {alpha:.4},"
-                f" improvement_ratio = {improvement_ratio:.4}"
-                )
+            if optParams.show_progress is True:
+                print_progress(i,loss,conv_history.gradnorm[-1],alpha,improvement_ratio)
             if optParams.callback:
                 optParams.callback(params)
     conv_history.finish()

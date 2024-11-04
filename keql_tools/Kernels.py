@@ -98,9 +98,12 @@ def get_matern(p,rho):
                    [0.82864914, 0.52399411]], dtype=float64)           
     """
     exp_multiplier = -jnp.sqrt(2 * p + 1)
-    coefficients = jnp.array([factorial(p + i) / (factorial(i) * factorial(p - i)) * (jnp.sqrt(8 * p + 4))**(p - i) for i in range(p + 1)])
+
+    coefficients = jnp.array([
+        jnp.array(factorial(p + i) / (factorial(i) * factorial(p - i)) * (jnp.sqrt(8 * p + 4))**(p - i),float) for i in range(p + 1)
+        ])
     powers = jnp.arange(p,-1,-1)
-    norm_cons = factorial(p)/factorial(2*p)
+    norm_cons = jnp.array(factorial(p)/factorial(2*p),float)
     def k(x,y):
         # True 
         d2 = jnp.sum((x-y)**2)/rho**2

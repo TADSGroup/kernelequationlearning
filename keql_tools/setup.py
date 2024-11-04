@@ -14,5 +14,7 @@ setup(
         "EquationModel",
         "plotting",
         "parabolic_data_utils",
+        'darcy_data',
+        'pde_solvers'
         ]
 )
