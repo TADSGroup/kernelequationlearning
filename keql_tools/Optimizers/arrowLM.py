@@ -10,6 +10,8 @@ from functools import partial
 def setup_arrow_functions(model,beta_reg_u,beta_reg_P,datafit_weight):
     model_obs_scaling = 1/jnp.sqrt(sum(jax.vmap(len)(model.observation_points)))
     model_colloc_scaling = 1/jnp.sqrt(sum(jax.vmap(len)(model.collocation_points)))
+
+    @jax.jit
     def single_function_residuals(
         u_param,
         P_params,
@@ -42,7 +44,7 @@ def setup_arrow_functions(model,beta_reg_u,beta_reg_P,datafit_weight):
     u_vmap_axes = (0,None,0,0,0,0)
 
     @jax.jit
-    def full_loss(u_params,P_params):
+    def full_loss(u_params,P_params, data_args = data_args):
         residuals = (
             jax.vmap(
                 single_function_residuals,in_axes = u_vmap_axes
@@ -61,13 +63,13 @@ def setup_arrow_functions(model,beta_reg_u,beta_reg_P,datafit_weight):
     _jacU_func = jax.vmap(jax.jacrev(single_function_residuals,argnums = 0),in_axes=u_vmap_axes)
 
     @jax.jit
-    def jacU(u_params,P_params):
+    def jacU(u_params,P_params,data_args = data_args):
         return _jacU_func(u_params,P_params,*data_args)
     
     _jacP_func = jax.vmap(jax.jacrev(single_function_residuals,argnums = 1),in_axes=u_vmap_axes)
 
     @jax.jit
-    def jacP(u_params,P_params):
+    def jacP(u_params,P_params,data_args = data_args):
         return _jacP_func(u_params,P_params,*data_args)
     
     return full_loss,single_function_residuals,jacU,jacP,data_args
@@ -86,7 +88,7 @@ def BlockArrowLM(
     init_params : jax array
         initial guess
     model :
-        Object that contains model.F, and model.jac, and model.damping_matrix
+        SharedEquationModel
     beta : float
         (global) regularization strength
     optParams: LMParams
@@ -107,7 +109,6 @@ def BlockArrowLM(
     #calling the loss and grad separately, and then 
     #building the rhs again (essentially also grad)
     grad_loss = jax.jit(jax.grad(full_loss))
-
 
     conv_history = ConvergenceHistory(track_iterates=False)
     start_time = time.time()

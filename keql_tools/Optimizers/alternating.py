@@ -9,6 +9,10 @@ from functools import partial
 from jaxopt import AndersonAcceleration
 
 def build_updates_alternating(model,beta_reg_P,beta_reg_u,datafit_weight):
+    model_obs_scaling = 1/jnp.sqrt(sum(jax.vmap(len)(model.observation_points)))
+    model_colloc_scaling = 1/jnp.sqrt(sum(jax.vmap(len)(model.collocation_points)))
+
+    @jax.jit
     def single_function_residuals(
         u_param,
         P_params,
@@ -22,13 +26,22 @@ def build_updates_alternating(model,beta_reg_P,beta_reg_u,datafit_weight):
             single_observation_points,
             single_observation_values,
         )
+        datafit_res = datafit_res*jnp.sqrt(datafit_weight)*model_obs_scaling
         eqn_res = model.equation_residual_single(
             u_param,
             P_params,
             single_collocation_points,
             single_rhs
         )
-        return jnp.hstack([datafit_res*jnp.sqrt(datafit_weight/len(datafit_res)),eqn_res/jnp.sqrt(len(eqn_res))])
+        eqn_res = eqn_res*model_colloc_scaling
+        return jnp.hstack([datafit_res,eqn_res])
+
+    stacked_colloc = jnp.stack(model.collocation_points)
+    stacked_rhs = jnp.stack(model.rhs_forcing_values)
+    stacked_obs_points = jnp.stack(model.observation_points)
+    stacked_obs_values = jnp.stack(model.observation_values)
+    data_args = [stacked_colloc,stacked_rhs,stacked_obs_points,stacked_obs_values]
+    u_vmap_axes = (0,None,0,0,0,0)
 
     def P_residual_single(
         u_param,
@@ -42,14 +55,8 @@ def build_updates_alternating(model,beta_reg_P,beta_reg_u,datafit_weight):
             single_collocation_points,
             single_rhs
         )
-        return eqn_res/jnp.sqrt(len(eqn_res))
-    stacked_colloc = jnp.stack(model.collocation_points)
-    stacked_rhs = jnp.stack(model.rhs_forcing_values)
-    stacked_obs_points = jnp.stack(model.observation_points)
-    stacked_obs_values = jnp.stack(model.observation_values)
-    data_args = [stacked_colloc,stacked_rhs,stacked_obs_points,stacked_obs_values]
-    u_vmap_axes = (0,None,0,0,0,0)
-
+        return eqn_res*model_colloc_scaling
+    
     @jax.jit
     def update_u(u_params,P_params,alpha):
         jacobians = jax.vmap(
@@ -69,7 +76,6 @@ def build_updates_alternating(model,beta_reg_P,beta_reg_u,datafit_weight):
             JtJ = J.T@J + (alpha + beta_reg_u) * jnp.eye(len(u_param))
             return u_param - jnp.linalg.solve(JtJ,rhs_single)
         return jax.vmap(LM_step)(u_params,jacobians,rhs)
-
     
     @jax.jit
     def update_P(u_params,P_params,alpha):
@@ -102,7 +108,7 @@ def build_updates_alternating(model,beta_reg_P,beta_reg_u,datafit_weight):
                     *data_args
                     )
         )
-        return (
+        return (1/2) * (
             jnp.sum(residuals**2) + 
             beta_reg_P * jnp.sum(P_params**2) + 
             beta_reg_u * jnp.sum(jnp.mean(u_params**2,axis=1)

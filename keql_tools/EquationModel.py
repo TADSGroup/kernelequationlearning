@@ -53,6 +53,98 @@ class CholInducedRKHS():
     
     def get_damping(self):
         return jnp.identity(self.num_params)
+
+from functools import partial
+from jax import tree_util
+@tree_util.register_pytree_node_class
+class AltCholInducedRKHS():
+    """
+    Still have to go back and allow for multiple operator sets
+        For example, points on boundary only need evaluation, not the rest of the operators if we know boundary conditions
+    This only does 1 dimensional output for now. 
+    """
+    def __init__(
+            self,
+            basis_points,
+            operators,
+            kernel_function,
+            nugget_size = 1e-6
+            ) -> None:
+        self.operators = operators
+        self.k = kernel_function
+
+        self.basis_points = basis_points
+        self.kmat = get_kernel_block_ops(self.k,self.operators,self.operators)(self.basis_points,self.basis_points)
+        self.cholT = cholesky(self.kmat + nugget_size * diagpart(self.kmat),lower = False)
+        self.num_params = len(basis_points) * len(operators)
+    
+    # Define tree_flatten
+    def tree_flatten(self):
+        # Dynamic attributes (leaves)
+        children = (
+            self.basis_points,
+            self.kmat,
+            self.cholT,
+            self.num_params,
+        )
+        # Static attributes
+        aux_data = {
+            'operators': self.operators,
+            'k': self.k,
+        }
+        return children, aux_data
+    
+    # Define tree_unflatten
+    @classmethod
+    def tree_unflatten(cls, aux_data, children):
+        obj = cls.__new__(cls)
+        (
+            obj.basis_points,
+            obj.kmat,
+            obj.cholT,
+            obj.num_params,
+        ) = children
+        obj.operators = aux_data['operators']
+        obj.k = aux_data['k']
+        return obj
+
+    @jax.jit
+    def evaluate_basis(self,x):
+        return jnp.hstack([
+            jax.vmap(op(self.k,1),in_axes = (None,0))(x,self.basis_points)
+            for op in self.operators])
+    
+    @jax.jit
+    def point_eval_single(self,x,params):
+        return jnp.dot(self.evaluate_basis(x),solve_triangular(self.cholT,params))
+    
+    @partial(jax.jit,static_argnames = 'operator')
+    def evaluate_operator(self,operator,x,params):
+        return operator(self.point_eval_single,0)(x,params)
+    
+    def point_evaluate(self,eval_points,params):
+        return jax.vmap(self.point_eval_single,in_axes = (0,None))(eval_points,params)
+    
+    @partial(jax.jit,static_argnames = 'operators')
+    def evaluate_operators(self,operators,eval_points,params):
+        return jnp.hstack([
+            jax.vmap(self.evaluate_operator,in_axes = (None,0,None))(op,eval_points,params)
+            for op in operators])
+    
+    def evaluate_all_ops(self,eval_points,params):
+        return self.evaluate_operators(self.operators,eval_points,params)    
+    
+    def get_fitted_params(self,X,y,lam = 1e-6):
+        K = get_kernel_block_ops(self.k,(eval_k,),self.operators)(X,self.basis_points)
+        M = solve_triangular(self.cholT.T,K.T,lower = True).T
+        return l2reg_lstsq(M,y,reg = lam)
+    
+    def get_eval_function(self,params):
+        return lambda x:self.point_eval_single(x,params)
+    
+    def get_damping(self):
+        return jnp.identity(self.num_params)
+
     
     
 def check_OperatorPDEModel(
