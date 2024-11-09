@@ -464,3 +464,11 @@ __pycache__/
 # OpenCover UI analysis results
 OpenCover/
 junit/
+
+# Ignore all directories and files that contain 'experiment_results' in their path
+**/experiment_results/
+**/experiment_results/*
+experiment_results/
+experiment_results/*
+
+*nohup.out
