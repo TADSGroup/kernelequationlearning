@@ -1,19 +1,38 @@
-device_num = 3
-num_functions = 50
-samples_per_function = 10
-collocation_grid_n = 16
-a_matern_lengthscale = 0.3
-a_exponent = 0.25
-random_seed = 13
+import argparse
 
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description='Run the Python script with parameters')
+parser.add_argument('--device_num', type=int, default=3, help='Device number for jax')
+parser.add_argument('--num_functions', type=int, default=50, help='Number of functions')
+parser.add_argument('--samples_per_function', type=int, default=10, help='Samples per function')
+parser.add_argument('--collocation_grid_n', type=int, default=16, help='Number of collocation grid points')
+parser.add_argument('--a_matern_lengthscale', type=float, default=0.3, help='Matern lengthscale parameter')
+parser.add_argument('--a_exponent', type=float, default=0.25, help='Exponent parameter')
+parser.add_argument('--random_seed', type=int, default=13, help='Random seed')
+parser.add_argument('--experiment_extra_name', type=str, default='', help='Extra name data')
+
+
+args = parser.parse_args()
+
+# Assign parameters
+device_num = args.device_num
+num_functions = args.num_functions
+samples_per_function = args.samples_per_function
+collocation_grid_n = args.collocation_grid_n
+a_matern_lengthscale = args.a_matern_lengthscale
+a_exponent = args.a_exponent
+random_seed = args.random_seed
+extra_name = args.experiment_extra_name
+
+# Settings dictionary
 settings = {
-    'num_functions':num_functions,
-    'samples_per_functions':samples_per_function,
-    'num_col_grid':collocation_grid_n,
-    'a_matern_lengthscale':16,
-    'a_exponent':0.25,
-    'random_seed':13,
-    'run_name':f"seed_{random_seed}_{num_functions}fun_{samples_per_function}obs"
+    'num_functions': num_functions,
+    'samples_per_functions': samples_per_function,
+    'num_col_grid': collocation_grid_n,
+    'a_matern_lengthscale': a_matern_lengthscale,
+    'a_exponent': a_exponent,
+    'random_seed': random_seed,
+    'run_name': f"{extra_name}_seed{random_seed}_{num_functions}fun_{samples_per_function}obs"
 }
 
 import jax
@@ -21,19 +40,24 @@ jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_default_device", jax.devices()[device_num])
 
 import jax.numpy as jnp
-from KernelTools import make_block,eval_k,vectorize_kfunc,diagpart,get_selected_grad
+from KernelTools import eval_k,vectorize_kfunc,get_selected_grad
 from Kernels import get_gaussianRBF,get_centered_scaled_poly_kernel,get_matern
-from data_utils import build_xy_grid
 from darcy_data import get_darcy_solver,sample_gp_function
 from jax.random import PRNGKey as pkey
 import matplotlib.pyplot as plt
-from EquationModel import CholInducedRKHS,SharedOperatorPDEModel,InducedOperatorModel,AltCholInducedRKHS
+from EquationModel import CholInducedRKHS,SharedOperatorPDEModel,InducedOperatorModel
 from tqdm.auto import tqdm
 from parabolic_data_utils import build_alpha_chebyshev
 from data_utils import make_grids
 from pickle_save import save
+import time
 
-obs_key,rhs_key,a_key = jax.random.split(pkey(random_seed))
+start_time = time.time()
+
+save(settings,settings['run_name'] + "/settings")
+
+
+obs_key,rhs_key,a_key = jax.random.split(pkey(random_seed),3)
 # obs_key = pkey(32)
 # rhs_key = pkey(10)
 # a_key = pkey(124)
@@ -165,6 +189,13 @@ u_sol,P_sol,arrow_conv = BlockArrowLM(
     optParams=lm_params
     )
 
+result_dict = {
+    '1step_u_params':u_sol,
+    '1step_P_params':P_sol,
+    '2step_u_params':u_init,
+    '2step_P_params':P_sol
+               }
+
 grid = jnp.linspace(0.,1.,50)
 x,y = jnp.meshgrid(grid,grid)
 fine_grid_int = jnp.vstack([x.flatten(),y.flatten()]).T
@@ -181,6 +212,144 @@ def get_percent_errors(u_params):
 
 onestep_errors = get_percent_errors(u_sol)
 interp_errors = get_percent_errors(u_init)
-print("Onestep ",jnp.mean(onestep_errors))
-print("Interpolant ",jnp.mean(interp_errors))
-print("Average Ratio: ",jnp.mean(interp_errors/onestep_errors))
+result_dict['u_error_onestep'] = onestep_errors
+result_dict['u_error_interp'] = interp_errors
+
+import matplotlib.gridspec as gridspec
+
+fig = plt.figure(figsize=(15, 4 * num_functions))
+gs = gridspec.GridSpec(num_functions, 4, width_ratios=[1, 1, 1, 0.05])  # Last column for colorbar
+
+for i in range(num_functions):
+    # Get the subplots for this row
+    ax1 = plt.subplot(gs[i, 0])
+    ax2 = plt.subplot(gs[i, 1])
+    ax3 = plt.subplot(gs[i, 2])
+    cbar_ax = plt.subplot(gs[i, 3])  # Colorbar axis
+
+    # Compute the values
+    u_vals_1step = u_model.point_evaluate(fine_grid_int, u_sol[i])
+    u_vals_interp = u_model.point_evaluate(fine_grid_int, u_init[i])
+    u_true_vals = jax.vmap(u_true_functions[i])(fine_grid_int)
+
+    # Determine the levels for consistent color mapping across subplots in the same row
+    lower = jnp.min(jnp.vstack([u_vals_1step, u_vals_interp, u_true_vals]))
+    upper = jnp.max(jnp.vstack([u_vals_1step, u_vals_interp, u_true_vals]))
+    levels = jnp.linspace(lower, upper + 1e-4, 200)
+
+    # First subplot: Truth
+    ax1.set_title("Truth")
+    contour_truth = ax1.tricontourf(fine_grid_int[:, 0], fine_grid_int[:, 1], u_true_vals, levels=levels)
+    ax1.scatter(xy_obs[i][:, 0], xy_obs[i][:, 1], c='black', s=25)
+    ax1.scatter(xy_bdy[:, 0], xy_bdy[:, 1], c='red', s=25)
+
+    # Second subplot: 1 Step Solution
+    ax2.set_title(f"1 Step, {100 * onestep_errors[i]:.2f}% Error")
+    contour_1step = ax2.tricontourf(fine_grid_int[:, 0], fine_grid_int[:, 1], u_vals_1step, levels=levels)
+    ax2.scatter(xy_obs[i][:, 0], xy_obs[i][:, 1], c='black', s=25)
+    ax2.scatter(xy_bdy[:, 0], xy_bdy[:, 1], c='red', s=25)
+
+    # Third subplot: Basic Kernel Interpolant
+    ax3.set_title(f"Basic Kernel Interpolant, {100 * interp_errors[i]:.2f}% Error")
+    contour_interp = ax3.tricontourf(fine_grid_int[:, 0], fine_grid_int[:, 1], u_vals_interp, levels=levels)
+    ax3.scatter(xy_obs[i][:, 0], xy_obs[i][:, 1], c='black', s=25)
+    ax3.scatter(xy_bdy[:, 0], xy_bdy[:, 1], c='red', s=25)
+
+    # Add colorbar for this row
+    cbar = fig.colorbar(contour_interp, cax=cbar_ax)
+    cbar_ax.set_ylabel('Intensity')  # Label for colorbar
+
+# Adjust layout to prevent overlap
+plt.tight_layout()
+plt.savefig(settings['run_name']+'/u_results.png')
+plt.close()
+
+import pde_solvers.kernel_elliptic
+import Optimizers.solvers_base
+from importlib import reload
+reload(Optimizers.solvers_base)
+reload(pde_solvers.kernel_elliptic)
+from pde_solvers.kernel_elliptic import EllipticPDEModel
+
+evaluation_key = pkey(10)
+num_evaluation_functions = 10
+kernel_f = get_gaussianRBF(0.15)
+keys = jax.random.split(evaluation_key,num_evaluation_functions)
+
+rhs_functions_eval = tuple(
+    sample_gp_function(subkey,kernel_f) for subkey in keys
+)
+darcy_solve = get_darcy_solver(a,num_grid = 50,k_u = get_gaussianRBF(0.2))
+u_true_fine = tuple([jax.vmap(darcy_solve(f))(fine_grid) for f in tqdm(rhs_functions_eval)])
+
+k_u = get_gaussianRBF(0.2)
+solver_params = LMParams(max_iter = 501,init_alpha = 1e-4,min_alpha = 1e-8,use_jit = False,show_progress=False)
+
+
+onestep_P = lambda x:P_model.predict(x,P_sol)
+onestep_solver = EllipticPDEModel(
+    get_gaussianRBF(0.2),onestep_P,
+    feature_operators,num_grid = 30,solverParams=solver_params
+    )
+
+twostep_P = lambda x:P_model.predict(x,P_init)
+twostep_solver = EllipticPDEModel(
+    get_gaussianRBF(0.2),twostep_P,
+    feature_operators,num_grid = 30,
+    solverParams=solver_params
+    )
+
+def solve_evaluate(solver,rhs_func,grid):
+    pde_u,pde_params,conv = solver.solve(rhs_func)
+    return pde_u.point_evaluate(grid,pde_params)
+
+onestep_solutions = [solve_evaluate(onestep_solver,rhs_f,fine_grid) for rhs_f in rhs_functions_eval]
+twostep_solutions = [solve_evaluate(twostep_solver,rhs_f,fine_grid) for rhs_f in rhs_functions_eval]
+
+onestep_operator_errors = jnp.array([jnp.linalg.norm(uu - u_one)/jnp.linalg.norm(uu) for uu,u_one in zip(u_true_fine,onestep_solutions)])
+twostep_operator_errors = jnp.array([jnp.linalg.norm(uu - u_two)/jnp.linalg.norm(uu) for uu,u_two in zip(u_true_fine,twostep_solutions)])
+
+result_dict['1step_op_errors']=onestep_operator_errors
+result_dict['2step_op_errors']=twostep_operator_errors
+
+
+onestep_forward_errors = []
+twostep_forward_errors = []
+
+for i in range(num_evaluation_functions):
+    sol = darcy_solve(rhs_functions_eval[i])
+    rhs_values = jax.vmap(rhs_functions_eval[i])(fine_grid_int)
+    true_input_features = jnp.vstack([fine_grid_int.T] + [jax.vmap(op(sol,0))(fine_grid_int) for op in feature_operators]).T
+    onestep_forward_errors.append(jnp.linalg.norm(rhs_values - onestep_P(true_input_features))/jnp.linalg.norm(rhs_values))
+    twostep_forward_errors.append(jnp.linalg.norm(rhs_values - twostep_P(true_input_features))/jnp.linalg.norm(rhs_values))
+
+onestep_forward_errors = jnp.array(onestep_forward_errors)
+twostep_forward_errors = jnp.array(twostep_forward_errors)
+
+result_dict['1step_forward_errors']=onestep_forward_errors
+result_dict['2step_forward_errors']=twostep_forward_errors
+
+save(result_dict,settings['run_name'] + '/error_results')
+
+import pandas as pd
+result_summary_dict = {
+    "mean u rmse across in sample functions":{
+        'one step':jnp.mean(onestep_errors),
+        'two step':jnp.mean(interp_errors),
+    },
+    'operator rmse OOS':{
+        'one step':jnp.mean(onestep_operator_errors),
+        'two step':jnp.mean(twostep_operator_errors),
+    },
+    'P forward rmse OOS':{
+        'one step':jnp.mean(onestep_forward_errors),
+        'two step':jnp.mean(twostep_forward_errors),
+    },
+    "total experiment time":{
+        'one step':time.time() - start_time,
+        'two step':time.time() - start_time,
+    }
+}
+pd.DataFrame(result_summary_dict).to_csv(settings['run_name'] + '/error_summary.csv')
+
+

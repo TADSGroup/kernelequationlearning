@@ -1,11 +1,10 @@
-from jax.tree_util import pytree
 import pickle
 from pathlib import Path
 from typing import Union
 
 suffix = '.pickle'
 
-def save(data: pytree, path: Union[str, Path], overwrite: bool = False):
+def save(data, path: Union[str, Path], overwrite: bool = False):
     path = Path(path)
     if path.suffix != suffix:
         path = path.with_suffix(suffix)
@@ -19,7 +18,7 @@ def save(data: pytree, path: Union[str, Path], overwrite: bool = False):
         pickle.dump(data, file)
 
 
-def load(path: Union[str, Path]) -> pytree:
+def load(path: Union[str, Path]):
     path = Path(path)
     if not path.is_file():
         raise ValueError(f'Not a file: {path}')
