@@ -8,8 +8,12 @@ import jax
 from functools import partial
 
 def setup_arrow_functions(model,beta_reg_u,beta_reg_P,datafit_weight):
-    model_obs_scaling = 1/jnp.sqrt(sum(jax.vmap(len)(model.observation_points)))
-    model_colloc_scaling = 1/jnp.sqrt(sum(jax.vmap(len)(model.collocation_points)))
+    model_obs_scaling = 1/jnp.sqrt(
+        sum(len(obs_p) for obs_p in model.observation_points)
+        )
+    model_colloc_scaling = 1/jnp.sqrt(
+        sum(len(obs_p) for obs_p in model.collocation_points)
+        )
 
     @jax.jit
     def single_function_residuals(

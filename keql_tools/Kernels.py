@@ -16,22 +16,6 @@ def get_gaussianRBF(gamma):
 
         Returns:
             function: This function returns the RBF kernel with fixed parameter gamma.   
-
-
-        Example:
-            >>> gamma1 = 1.
-            >>> k = get_gaussianRBF(gamma1)
-            >>> k(1.,2.)
-            Array(0.60653066, dtype=float64)
-            >>> gamma2 = 2.
-            >>> k = get_gaussianRBF(gamma2)
-            >>> k_vectorized = vectorize_kfunc(k)
-            >>> x = jnp.array([1.,2.,3.])
-            >>> y = jnp.array([4.,5.])
-            >>> k(x,y)
-            Array([[0.32465247, 0.13533528],
-                   [0.60653066, 0.32465247],
-                   [0.8824969 , 0.60653066]], dtype=float64)           
     """
     def k(x,y):
         return jnp.exp(-jnp.sum((x-y)**2)/(2*gamma**2))
@@ -80,22 +64,6 @@ def get_matern(p,rho):
 
         Returns:
             function: This function returns the Matern kernel with smoothness p+1/2 and lengthscale rho.   
-
-
-        Example:
-            >>> rho1 = 1.
-            >>> k_matern_5_2 = get_matern(2,rho1)
-            >>> k_matern_5_2(1.,2.)
-            Array(0.52399411, dtype=float64)
-            >>> rho2 = 2.
-            >>> k_matern_5_2 = get_matern(2,rho2)
-            >>> k_matern_5_2_vectorized = vectorize_kfunc(k_matern_5_2)
-            >>> x = jnp.array([1.,2.,3.])
-            >>> y = jnp.array([4.,5.])
-            >>> k_matern_5_2_vectorized(x,y)
-            Array([[0.28316327, 0.13866022],
-                   [0.52399411, 0.28316327],
-                   [0.82864914, 0.52399411]], dtype=float64)           
     """
     exp_multiplier = -jnp.sqrt(2 * p + 1)
 
