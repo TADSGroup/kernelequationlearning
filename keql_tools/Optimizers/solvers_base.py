@@ -57,6 +57,7 @@ class ConvergenceHistory:
     alpha_vals: list = field(default_factory=list)
     cumulative_time: list = field(default_factory=list)
     linear_system_rel_residual: list = field(default_factory=list)
+    extra_data: dict = field(default_factory=dict)
 
     def update(
         self,

@@ -160,20 +160,24 @@ def CholeskyLM(
     return params,conv_history
 
 
-defaultSVDParams = LMParams(
-    max_iter = 201,
-    tol = 1e-10,
-    cmin = 0.05,
-    line_search_increase_ratio = 2.,
-    min_alpha = 0.,
-    step_adapt_multiplier=1.7,
-)
+class SVD_LMParams(LMParams):
+    def __init__(self, max_iter=201, tol=1e-10, cmin=0.05,
+                 line_search_increase_ratio=2.0, min_alpha=0.0,
+                 step_adapt_multiplier=1.7, **kwargs):
+        # Update defaults by merging any overrides from kwargs
+        super().__init__(max_iter=max_iter,
+                         tol=tol,
+                         cmin=cmin,
+                         line_search_increase_ratio=line_search_increase_ratio,
+                         min_alpha=min_alpha,
+                         step_adapt_multiplier=step_adapt_multiplier,
+                         **kwargs)
 
 def SVD_LM(
         init_params,
         model,
         beta,
-        optParams: LMParams = defaultSVDParams
+        optParams: SVD_LMParams = SVD_LMParams()
         ):
     """Adaptively regularized Levenberg Marquardt optimizer
     Uses svd solver, assumes damping is given by identity
@@ -195,7 +199,6 @@ def SVD_LM(
     convergence_dict
         dictionary of data tracking convergence
     """
-    print("HERE")
     conv_history = ConvergenceHistory(optParams.track_iterates)
     start_time = time.time()
     params = init_params.copy()
