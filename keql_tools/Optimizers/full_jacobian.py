@@ -151,7 +151,7 @@ def CholeskyLM(
 
         if conv_history.gradnorm[-1]<=optParams.tol:
             break
-        if i%optParams.print_every ==0 or i<=5 or i == optParams.max_iter:
+        if i%optParams.print_every ==0 or i<=5 or i == optParams.max_iter-1:
             if optParams.show_progress is True:
                 print_progress(i,loss,conv_history.gradnorm[-1],alpha,improvement_ratio)
             if optParams.callback:

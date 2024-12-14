@@ -403,8 +403,9 @@ class OperatorPDEModel():
                 for u_model,u_params,obs_points,obs_vals in zip(self.u_models,all_u_params,self.observation_points,self.observation_values)
                 ]
         )
-    
+    @partial(jit,static_argnames = ['self'])
     def F(self,full_params):
+        print("F")
         all_u_params = self.get_u_params(full_params)
         P_params = self.get_P_params(full_params)
         eqn_res = self.stacked_equation_residual(all_u_params,P_params)

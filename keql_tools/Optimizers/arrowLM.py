@@ -253,7 +253,7 @@ def BlockArrowLM(
 
         if conv_history.gradnorm[-1]<=optParams.tol:
             break
-        if i%optParams.print_every ==0 or i<=5 or i == optParams.max_iter:
+        if i%optParams.print_every ==0 or i<=5 or i == optParams.max_iter-1:
             print(
                 f"Iteration {i}, loss = {loss:.4},"
                 f" gradnorm = {conv_history.gradnorm[-1]:.4}, alpha = {alpha:.4},"

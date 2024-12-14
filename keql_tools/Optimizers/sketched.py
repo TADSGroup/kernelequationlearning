@@ -133,7 +133,8 @@ def SketchedLM(
         sampling_key,key = jax.random.split(key)
         sketch = jax.random.normal(
             sampling_key,
-            shape = (optParams.sketch_size,len(residuals)))/jnp.sqrt(optParams.sketch_size)
+            shape = (optParams.sketch_size,len(residuals)),
+            )/jnp.sqrt(optParams.sketch_size)
         params,loss,rhs,improvement_ratio,alpha,linear_system_rel_residual,succeeded = (
             LevenbergMarquadtUpdate(params,alpha,sketch)
         )
@@ -167,7 +168,7 @@ def SketchedLM(
 
         if conv_history.gradnorm[-1]<=optParams.tol:
             break
-        if i%optParams.print_every ==0 or i<=5 or i == optParams.max_iter:
+        if i%optParams.print_every ==0 or i<=5 or i == optParams.max_iter-1:
             print(
                 f"Iteration {i}, loss = {loss:.4},"
                 f" gradnorm = {conv_history.gradnorm[-1]:.4}, alpha = {alpha:.4},"
@@ -350,7 +351,7 @@ def SketchedCGLM(
 
         if conv_history.gradnorm[-1]<=optParams.tol:
             break
-        if i%optParams.print_every ==0 or i<=5 or i == optParams.max_iter:
+        if i%optParams.print_every ==0 or i<=5 or i == optParams.max_iter-1:
             print(
                 f"Iteration {i}, loss = {loss:.4},"
                 f" gradnorm = {conv_history.gradnorm[-1]:.4}, alpha = {alpha:.4},"
