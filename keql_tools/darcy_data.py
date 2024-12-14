@@ -1,10 +1,12 @@
 import jax
 jax.config.update("jax_enable_x64", True)
+
 import jax.numpy as jnp
-from KernelTools import make_block,eval_k,vectorize_kfunc,diagpart
-from Kernels import get_gaussianRBF
 from data_utils import build_xy_grid
-from jax.scipy.linalg import solve_triangular,cho_factor,cho_solve
+from jax.scipy.linalg import cho_factor, cho_solve, solve_triangular
+from Kernels import get_gaussianRBF
+from KernelTools import diagpart, eval_k, make_block, vectorize_kfunc
+
 def build_darcy_op(a):
     def darcy_op(k,index):
         gradk = jax.grad(k,argnums = index)
@@ -20,7 +22,7 @@ def get_darcy_solver(
     num_grid = 50,
     k_u = get_gaussianRBF(0.2),
     nugget = 2e-10,
-    num_refinements = 5,
+    num_refinements = 4,
 ):
     darcy_op = build_darcy_op(a)
     xy_int,xy_bdy = build_xy_grid([0,1],[0,1],num_grid,num_grid)
@@ -33,7 +35,6 @@ def get_darcy_solver(
             for R,right_points in zip(operators,point_blocks)] for L,left_points in zip(operators,point_blocks)
     ]
     Kphiphi = jnp.block(Kphiphi_blocks)
-    num_refinements = 4
     chol = cho_factor(Kphiphi + nugget * diagpart(Kphiphi))
 
     @jax.jit

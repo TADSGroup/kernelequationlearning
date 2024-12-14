@@ -1,36 +1,47 @@
-from dataclasses import dataclass, field
-import jax.numpy as jnp
 import jax
+import jax.numpy as jnp
+import time
+from dataclasses import dataclass, field
 from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 plt.style.use("ggplot")
-import time
+from typing import Optional, Callable, Any
 
 @dataclass
 class LMParams:
     """
+    Parameters
+    ----------
     max_iter : int, optional
-        by default 201
+        Maximum number of iterations, by default 201.
     tol : float, optional
-        Gradient norm stopping tolerance
+        Gradient norm stopping tolerance, by default 1e-8.
     cmin : float, optional
-        Minimum armijo ratio to accept step, by default 0.05
+        Minimum Armijo ratio to accept a step, by default 0.05.
     line_search_increase_ratio : float, optional
-        constant to increase reg strength by in backtracking line search, by default 1.5
+        Factor by which to increase the regularization strength during backtracking line search, 
+        by default 1.5.
     max_line_search_iterations : int, optional
-        by default 20
+        Maximum number of line search iterations, by default 20.
     min_alpha : float, optional
-        min damping strength, by default 1e-6
+        Minimum damping strength, by default 1e-6.
     max_alpha : float, optional
-        max damping strength, by default 50.
+        Maximum damping strength, by default 50.0.
     init_alpha : float, optional
-        initial damping strength, by default 3.
-    step_adapt_multipler : float, optional
-        value to use for adapting alpha, by default 1.2
-    callback : callable, optional
-        function called to print another loss each iteration, by default None
+        Initial damping strength, by default 3.0.
+    step_adapt_multiplier : float, optional
+        Factor by which to adapt the damping strength each iteration, by default 1.2.
+    callback : callable or None, optional
+        A function called each iteration (e.g., to log additional info). If None, no callback is used.
+        By default None.
     print_every : int, optional
-        How often to print convergence data, by default 50
+        How often to print convergence data, by default 50.
+    track_iterates : bool, optional
+        Whether to track iterates during optimization, by default False.
+    show_progress : bool, optional
+        Whether to show progress or status updates, by default True.
+    use_jit : bool, optional
+        Whether to use JIT compilation if available, by default True.
     """
     max_iter: int = 201
     tol: float = 1e-8
@@ -41,7 +52,7 @@ class LMParams:
     max_alpha: float = 50.0
     init_alpha: float = 3.0
     step_adapt_multiplier: float = 1.2
-    callback: callable = None
+    callback: Optional[Callable[..., Any]] = None
     print_every: int = 50
     track_iterates: bool = False
     show_progress: bool = True
