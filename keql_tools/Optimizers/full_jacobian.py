@@ -159,11 +159,21 @@ def CholeskyLM(
     conv_history.finish()
     return params,conv_history
 
+
+defaultSVDParams = LMParams(
+    max_iter = 201,
+    tol = 1e-10,
+    cmin = 0.05,
+    line_search_increase_ratio = 2.,
+    min_alpha = 0.,
+    step_adapt_multiplier=1.7,
+)
+
 def SVD_LM(
         init_params,
         model,
         beta,
-        optParams: LMParams = LMParams()
+        optParams: LMParams = defaultSVDParams
         ):
     """Adaptively regularized Levenberg Marquardt optimizer
     Uses svd solver, assumes damping is given by identity
@@ -185,6 +195,7 @@ def SVD_LM(
     convergence_dict
         dictionary of data tracking convergence
     """
+    print("HERE")
     conv_history = ConvergenceHistory(optParams.track_iterates)
     start_time = time.time()
     params = init_params.copy()
@@ -230,7 +241,7 @@ def SVD_LM(
             beta * params
         )
         linear_system_rel_residual = (
-            jnp.linalg.norm(linear_residual)/jnp.linalg.norm((J.T@residuals + beta * params))
+            jnp.linalg.norm(linear_residual)/jnp.linalg.norm((rhs))
         )
 
         #Compute step and if we decreased loss
