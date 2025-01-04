@@ -48,7 +48,7 @@ class LMParams:
     cmin: float = 0.05
     line_search_increase_ratio: float = 1.5
     max_line_search_iterations: int = 20
-    min_alpha: float = 1e-6
+    min_alpha: float = 1e-8
     max_alpha: float = 50.0
     init_alpha: float = 3.0
     step_adapt_multiplier: float = 1.2
