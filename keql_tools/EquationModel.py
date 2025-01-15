@@ -229,32 +229,32 @@ class InducedOperatorModel():
         return jnp.identity(self.num_params)
 
 
-class CholOperatorModel():
-    def __init__(
-        self,
-        kernel,
-        nugget_size = 1e-8,
-    ):
-        self.kernel_function = kernel
-        self.nugget_size = nugget_size
+# class CholOperatorModel():
+#     def __init__(
+#         self,
+#         kernel,
+#         nugget_size = 1e-8,
+#     ):
+#         self.kernel_function = kernel
+#         self.nugget_size = nugget_size
 
-    def predict(self,X,params):
-        K = self.kernel_function(X,X)
-        cholT = cholesky(K + self.nugget_size * diagpart(K),lower = False)
-        return K@solve_triangular(cholT,params)
+#     def predict(self,X,params):
+#         K = self.kernel_function(X,X)
+#         cholT = cholesky(K + self.nugget_size * diagpart(K),lower = False)
+#         return K@solve_triangular(cholT,params)
     
-    def predict_new(self,X,anchors,params):
-        K = self.kernel_function(anchors,anchors)
-        cholT = cholesky(K + self.nugget_size * diagpart(K),lower = False)
-        return self.kernel_function(X,anchors)@solve_triangular(cholT,params)
+#     def predict_new(self,X,anchors,params):
+#         K = self.kernel_function(anchors,anchors)
+#         cholT = cholesky(K + self.nugget_size * diagpart(K),lower = False)
+#         return self.kernel_function(X,anchors)@solve_triangular(cholT,params)
     
-    def fit_params(self,X,y,nugget = 1e-8):
-        K = self.kernel_function(X,X)
-        cholT = cholesky(K + self.nugget_size * diagpart(K),lower = False)
-        return cholT@jnp.linalg.solve(K + nugget * diagpart(K),y)
+#     def fit_params(self,X,y,nugget = 1e-8):
+#         K = self.kernel_function(X,X)
+#         cholT = cholesky(K + self.nugget_size * diagpart(K),lower = False)
+#         return cholT@jnp.linalg.solve(K + nugget * diagpart(K),y)
 
-    def rkhs_mat(self,X):
-        return jnp.eye(len(X))
+#     def rkhs_mat(self,X):
+#         return jnp.eye(len(X))
     
 class OperatorPDEModel():
     def __init__(
