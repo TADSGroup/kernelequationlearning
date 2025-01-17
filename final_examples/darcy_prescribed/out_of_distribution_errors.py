@@ -1,6 +1,6 @@
 # imports
 import jax
-# jax.config.update("jax_default_device",jax.devices()[1])
+jax.config.update("jax_default_device",jax.devices()[2])
 jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 from jax import jit,grad,jacfwd,jacrev,vmap
@@ -50,10 +50,11 @@ importlib.reload(Optimizers)
 from Optimizers import CholeskyLM,SVD_LM
 from Optimizers.solvers_base import *
 
-# In-distribution error
-def run_exp_i_dis_err(m,obs_pts,run):
+
+# Out-of-distribution error
+def run_exp_o_dis_err(m,obs_pts,run):
     '''
-    Computes in-distribution error for 1 step and 2 step methods.
+    Computes out-of-distribution error for 1 step and 2 step methods.
 
     Args:
         m (int): Number of functions.
@@ -64,7 +65,7 @@ def run_exp_i_dis_err(m,obs_pts,run):
         i_opt_1_5 (float): Error for Phat (1 step) for in-sample functions.
         i_opt_2 (float): Error for Phat (2 step) for in-sample functions.
 
-    '''   
+    '''
     # Sample m training functions from a GP
     kernel_GP = get_gaussianRBF(0.5)
     xy_pairs = get_xy_grid_pairs(50,0,1,0,1) # Pairs to build interpolants
@@ -170,13 +171,13 @@ def run_exp_i_dis_err(m,obs_pts,run):
                 len(feature_operators),
                 order = 'F'
             ) for xy_int,model,model_params in zip(xy_ints,u_models,all_u_params_init) ])
-    
+
     grid_features_u_init = jnp.hstack([jnp.vstack(xy_ints),grid_features_u_init])
 
     # P kernel
     k_P_u_part = get_centered_scaled_poly_kernel(1,grid_features_u_init[:,2:],c=1)
     k_P_x_part = get_gaussianRBF(0.4)
-
+    
     def k_P(x,y):
         return k_P_x_part(x[:2],y[:2]) * k_P_u_part(x[2:],y[2:])
 
@@ -198,7 +199,7 @@ def run_exp_i_dis_err(m,obs_pts,run):
         num_P_operator_params = num_P_params
     )
 
-    ### Optimize LM - new
+    ### Optimize LM
 
     # Initialize
     # rhs_values = tuple(rhs_func(int_points) for rhs_func,int_points in zip(rhs_functions,collocation_points))
@@ -271,62 +272,60 @@ def run_exp_i_dis_err(m,obs_pts,run):
         P_preds = P_func(S_test)
         return P_preds
     
-    # In distribution
-
+    # Out of distribution
     M = 3
 
-    kernel_GP = get_gaussianRBF(0.5) # Same regularity as training u's
-    # Sample M training functions from GP(0,K)
-    w_train_functions = GP_sampler(num_samples = M,
+    kernel_GP = get_gaussianRBF(0.2) # Rougher than the functions we train Phat
+    # Sample M test functions from GP(0,K)
+    w_test_functions = GP_sampler(num_samples = M,
                     X = xy_pairs, 
                     kernel = kernel_GP,
                     reg = 1e-12,
                     seed = run
                     )
-    vmapped_w_train_functions = tuple([jax.vmap(w) for w in w_train_functions]) # vmap'ed
-    w_rhs_functions = tuple([jax.vmap(get_rhs_darcy(w)) for w in w_train_functions]) #vmap'ed
+    vmapped_w_test_functions = tuple([jax.vmap(w) for w in w_test_functions]) # vmap'ed
+    w_rhs_functions = tuple([jax.vmap(get_rhs_darcy(w)) for w in w_test_functions]) #vmap'ed
 
     # mean 
     true = [f_w(xy_fine_int) for f_w in w_rhs_functions]
     #pred = [evaluate_hatP(w, xy_fine_int, u_sols, P_sol,feature_operators) for w in w_test_functions]
-    # pred1_5 = [ 
+    # pred1_5 = [
     #     evaluate_hatP(
     #     lambda x:P_model.kernel_function(x,S_train)@P_sol,
-    #     w, xy_fine_int,feature_operators) for w in w_train_functions
-    # ] - old
-
+    #     w, xy_fine_int,feature_operators) for w in w_test_functions
+    # ]
     pred1_5 = [
         evaluate_hatP(
         P_func,
-        w, xy_fine_int,feature_operators) for w in w_train_functions
+        w, xy_fine_int,feature_operators) for w in w_test_functions
     ]
+
     pred2 = [
         evaluate_hatP(
         P_func2,
-        w, xy_fine_int,feature_operators) for w in w_train_functions
+        u, xy_fine_int,feature_operators) for u in w_test_functions
     ]
 
-    i_dis_1_5 = jnp.mean(jnp.array([get_nrmse(t,p) for t,p in zip(true,pred1_5)]))
-    i_dis_2 = jnp.mean(jnp.array([get_nrmse(t,p) for t,p in zip(true,pred2)]))
+    o_dis_1_5 = jnp.mean(jnp.array([get_nrmse(t,p) for t,p in zip(true,pred1_5)]))
+    o_dis_2 = jnp.mean(jnp.array([get_nrmse(t,p) for t,p in zip(true,pred2)]))
 
-    return i_dis_1_5, i_dis_2
-
+    return o_dis_1_5, o_dis_2
 
 # Dictionary to store results
 err = {
     '1_5_mthd': {
-        '2_obs': {'i_dis': []},
-        '4_obs': {'i_dis': []},
-        '6_obs': {'i_dis': []},
-        '8_obs': {'i_dis': []},
-        '10_obs': {'i_dis': []}
+        '2_obs': {'o_dis': []},
+        '4_obs': {'o_dis': []},
+        '6_obs': {'o_dis': []},
+        '8_obs': {'o_dis': []},
+        '10_obs': {'o_dis': []}
                   },
     '2_mthd':   {
-        '2_obs': {'i_dis': []},
-        '4_obs': {'i_dis': []},
-        '6_obs': {'i_dis': []},
-        '8_obs': {'i_dis': []},
-        '10_obs': {'i_dis': []}
+        '2_obs': {'o_dis': []},
+        '4_obs': {'o_dis': []},
+        '6_obs': {'o_dis': []},
+        '8_obs': {'o_dis': []},
+        '10_obs': {'o_dis': []}
                 }
 }
 
@@ -336,18 +335,17 @@ NUM_RUNS = 10
 OBS_PTS_LIST = [2,4,6,8,10]
 for obs_pt in OBS_PTS_LIST:
     for m in NUM_FUN_LIST:
-        i_dis_1_5 = []
-        i_dis_2 = []
+        o_dis_1_5 = []
+        o_dis_2 = []
         for run in range(NUM_RUNS):
             # Run
-            res = run_exp_i_dis_err(m, obs_pt, run)
+            res = run_exp_o_dis_err(m, obs_pt, run)
             # Append
-            i_dis_1_5.append(res[0])
-            i_dis_2.append(res[1])
+            o_dis_1_5.append(res[0])
+            o_dis_2.append(res[1])
         # Append each list    
-        err['1_5_mthd'][f'{obs_pt}_obs']['i_dis'].append(i_dis_1_5)
-        err['2_mthd'][f'{obs_pt}_obs']['i_dis'].append(i_dis_2)   
+        err['1_5_mthd'][f'{obs_pt}_obs']['o_dis'].append(o_dis_1_5)
+        err['2_mthd'][f'{obs_pt}_obs']['o_dis'].append(o_dis_2)   
     # Save after
-    jnp.save('errors_i_dis/errs_1_5stepvs2step', err)
+    jnp.save('errors_o_dis/errs_1_5stepvs2step', err)
 print('sucess!')
-
