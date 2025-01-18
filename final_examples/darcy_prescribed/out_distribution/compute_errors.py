@@ -347,5 +347,5 @@ for obs_pt in OBS_PTS_LIST:
         err['1_5_mthd'][f'{obs_pt}_obs']['o_dis'].append(o_dis_1_5)
         err['2_mthd'][f'{obs_pt}_obs']['o_dis'].append(o_dis_2)   
     # Save after
-    jnp.save('errors_o_dis/errs_1_5stepvs2step', err)
+    jnp.save('errors', err)
 print('sucess!')

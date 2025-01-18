@@ -1,6 +1,6 @@
 # imports
 import jax
-# jax.config.update("jax_default_device",jax.devices()[1])
+jax.config.update("jax_default_device",jax.devices()[1])
 jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 from jax import jit,grad,jacfwd,jacrev,vmap
@@ -11,12 +11,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from labellines import labelLines
 from matplotlib.lines import Line2D
-plt.style.use('default')
-plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "Helvetica",
-    'font.size': 20
-})
 from tqdm.auto import tqdm
 # plt.style.use("ggplot")
 from importlib import reload
@@ -50,10 +44,10 @@ importlib.reload(Optimizers)
 from Optimizers import CholeskyLM,SVD_LM
 from Optimizers.solvers_base import *
 
-# In-distribution error
-def run_exp_i_dis_err(m,obs_pts,run):
+# In-sample error
+def run_exp_i_smpl_err(m,obs_pts,run):
     '''
-    Computes in-distribution error for 1 step and 2 step methods.
+    Computes in-sample error for 1 step and 2 step methods.
 
     Args:
         m (int): Number of functions.
@@ -61,8 +55,8 @@ def run_exp_i_dis_err(m,obs_pts,run):
         run (int): seed.
     
     Returns:
-        i_opt_1_5 (float): Error for Phat (1 step) for in-sample functions.
-        i_opt_2 (float): Error for Phat (2 step) for in-sample functions.
+        i_opt_1_5 (float): In-sample error for Phat (1 step) for in-sample functions.
+        i_opt_2 (float): In-sample error for Phat (2 step) for in-sample functions.
 
     '''   
     # Sample m training functions from a GP
@@ -97,7 +91,7 @@ def run_exp_i_dis_err(m,obs_pts,run):
     num_grid_points = 10
     num_interior_points = 50
 
-    # # Sample collocation points for f using random points different for every function
+    # Sample collocation points for f using random points different for every function
     # xy_ints,xy_bdys = sample_multiple_xy_grids_latin(
     #         num_functions = m,
     #         num_interior = num_interior_points,
@@ -170,12 +164,12 @@ def run_exp_i_dis_err(m,obs_pts,run):
                 len(feature_operators),
                 order = 'F'
             ) for xy_int,model,model_params in zip(xy_ints,u_models,all_u_params_init) ])
-    
     grid_features_u_init = jnp.hstack([jnp.vstack(xy_ints),grid_features_u_init])
 
     # P kernel
     k_P_u_part = get_centered_scaled_poly_kernel(1,grid_features_u_init[:,2:],c=1)
     k_P_x_part = get_gaussianRBF(0.4)
+
 
     def k_P(x,y):
         return k_P_x_part(x[:2],y[:2]) * k_P_u_part(x[2:],y[2:])
@@ -198,13 +192,7 @@ def run_exp_i_dis_err(m,obs_pts,run):
         num_P_operator_params = num_P_params
     )
 
-    ### Optimize LM - new
-
-    # Initialize
-    # rhs_values = tuple(rhs_func(int_points) for rhs_func,int_points in zip(rhs_functions,collocation_points))
-    
-    # P_init = P_model.get_fitted_params(grid_features_u_init,jnp.hstack(rhs_values))
-    # params_init = jnp.hstack(list(all_u_params_init)+[P_init])
+    ### Optimize LM
     params_init = jnp.hstack(list(all_u_params_init)+[jnp.zeros(m*len(xy_ints[0]))])
 
     # Optimizer hyperparameters
@@ -221,14 +209,18 @@ def run_exp_i_dis_err(m,obs_pts,run):
         optParams = optparams
     )
 
-    # p_adjusted,refine_convergence_data = SVD_LM(
-    #     params,
+    # params,convergence_data = CholeskyLM(
+    #     params_init.copy(),
     #     EqnModel,
-    #     beta = 1e-13,
-    #     optParams = optparams
+    #     beta = 1e-8,
+    #     max_iter = 301,
+    #     init_alpha=3,
+    #     line_search_increase_ratio=1.4,
+    #     print_every = 100
     # )
+    # p_adjusted,_ = SVD_LM(params,EqnModel,1e-3,500)
 
-    # Optimized parameters
+    # Optimized parameters - WORKING HERE
     u_sols = EqnModel.get_u_params(params)
     P_sol = EqnModel.get_P_params(params)
 
@@ -239,7 +231,8 @@ def run_exp_i_dis_err(m,obs_pts,run):
     x_fine,y_fine = np.meshgrid(np.linspace(0,1,num_fine_grid+4)[2:-2],np.linspace(0,1,num_fine_grid+4)[2:-2])
     xy_fine_int = np.vstack([x_fine.flatten(),y_fine.flatten()]).T
 
-    # Estimated P from 1.5 step method
+    # Estimated P from 1.5 step method 
+    # model_grid_features_all = EqnModel.get_stacked_eqn_features(u_sols) - old
     model_grid_features_all =jnp.vstack([EqnModel.single_eqn_features(u_model,u_params,eval_points) 
                                           for u_model,u_params,eval_points in zip(
                                             EqnModel.u_models,
@@ -249,6 +242,7 @@ def run_exp_i_dis_err(m,obs_pts,run):
     P_func = lambda x: P_model.predict(x,P_sol)
 
     # Estimated P from 2 step method
+    # init_P_features = EqnModel.get_stacked_eqn_features(all_u_params_init)
     init_P_features = jnp.vstack([EqnModel.single_eqn_features(u_model,u_params,eval_points) 
                                           for u_model,u_params,eval_points in zip(
                                             EqnModel.u_models,
@@ -257,6 +251,8 @@ def run_exp_i_dis_err(m,obs_pts,run):
     rhs_stacked = EqnModel.stacked_collocation_rhs
     P_params_naive = P_model.get_fitted_params(init_P_features,rhs_stacked)
     P_func2 = lambda x: P_model.predict(x,P_params_naive)
+    # P_func2 = lambda x : vectorize_kfunc(k_P)(x,S_train_2)@P_params_naive
+    
 
     # P[\phi(w)](fine_grid)
     def evaluate_hatP(P_func, w, fine_grid, feature_operators):
@@ -271,62 +267,59 @@ def run_exp_i_dis_err(m,obs_pts,run):
         P_preds = P_func(S_test)
         return P_preds
     
-    # In distribution
+    # In sample
 
-    M = 3
+    # Get list of approximated functions ^U = [^u_1, ^u_2, ^u_3]
+    true = [f(xy_fine_int) for f in rhs_functions]
 
-    kernel_GP = get_gaussianRBF(0.5) # Same regularity as training u's
-    # Sample M training functions from GP(0,K)
-    w_train_functions = GP_sampler(num_samples = M,
-                    X = xy_pairs, 
-                    kernel = kernel_GP,
-                    reg = 1e-12,
-                    seed = run
-                    )
-    vmapped_w_train_functions = tuple([jax.vmap(w) for w in w_train_functions]) # vmap'ed
-    w_rhs_functions = tuple([jax.vmap(get_rhs_darcy(w)) for w in w_train_functions]) #vmap'ed
-
-    # mean 
-    true = [f_w(xy_fine_int) for f_w in w_rhs_functions]
-    #pred = [evaluate_hatP(w, xy_fine_int, u_sols, P_sol,feature_operators) for w in w_test_functions]
-    # pred1_5 = [ 
+    # u_approx_funcs = [u_models[ind].get_eval_function(u_sols[ind]) 
+    #                 for ind in range(m)]
+    # pred1_5 = [
     #     evaluate_hatP(
-    #     lambda x:P_model.kernel_function(x,S_train)@P_sol,
-    #     w, xy_fine_int,feature_operators) for w in w_train_functions
-    # ] - old
+    #     P_func,
+    #     u, xy_fine_int,feature_operators) for u in u_approx_funcs
+    # ]
 
     pred1_5 = [
         evaluate_hatP(
         P_func,
-        w, xy_fine_int,feature_operators) for w in w_train_functions
+        u, xy_fine_int,feature_operators) for u in u_true_functions
     ]
+
+    # twostep_u_approx_funcs = [u_models[ind].get_eval_function(all_u_params_init[ind]) 
+    #                 for ind in range(m)]
+    # pred2 = [
+    #     evaluate_hatP(
+    #     P_func2,
+    #     u, xy_fine_int,feature_operators) for u in twostep_u_approx_funcs
+    # ]
+
     pred2 = [
         evaluate_hatP(
         P_func2,
-        w, xy_fine_int,feature_operators) for w in w_train_functions
+        u, xy_fine_int,feature_operators) for u in u_true_functions
     ]
 
-    i_dis_1_5 = jnp.mean(jnp.array([get_nrmse(t,p) for t,p in zip(true,pred1_5)]))
-    i_dis_2 = jnp.mean(jnp.array([get_nrmse(t,p) for t,p in zip(true,pred2)]))
+    i_smpl_1_5 = jnp.mean(jnp.array([get_nrmse(t,p) for t,p in zip(true,pred1_5)])) # RMSE
+    i_smpl_2 = jnp.mean(jnp.array([get_nrmse(t,p) for t,p in zip(true,pred2)]))
 
-    return i_dis_1_5, i_dis_2
-
-
+    return i_smpl_1_5, i_smpl_2
+    
 # Dictionary to store results
 err = {
     '1_5_mthd': {
-        '2_obs': {'i_dis': []},
-        '4_obs': {'i_dis': []},
-        '6_obs': {'i_dis': []},
-        '8_obs': {'i_dis': []},
-        '10_obs': {'i_dis': []}
+        '2_obs': {'i_smpl': []},
+        '4_obs': {'i_smpl': []},
+        '6_obs': {'i_smpl': []},
+        '8_obs': {'i_smpl': []},
+        '10_obs': {'i_smpl': []}
                   },
     '2_mthd':   {
-        '2_obs': {'i_dis': []},
-        '4_obs': {'i_dis': []},
-        '6_obs': {'i_dis': []},
-        '8_obs': {'i_dis': []},
-        '10_obs': {'i_dis': []}
+        '2_obs': {'i_smpl': []},
+        '4_obs': {'i_smpl': []},
+        '6_obs': {'i_smpl': []},
+        '8_obs': {'i_smpl': []},
+        '10_obs': {'i_smpl': []}
                 }
 }
 
@@ -336,18 +329,18 @@ NUM_RUNS = 10
 OBS_PTS_LIST = [2,4,6,8,10]
 for obs_pt in OBS_PTS_LIST:
     for m in NUM_FUN_LIST:
-        i_dis_1_5 = []
-        i_dis_2 = []
+        i_smpl_1_5 = []
+        i_smpl_2 = []
         for run in range(NUM_RUNS):
             # Run
-            res = run_exp_i_dis_err(m, obs_pt, run)
+            res = run_exp_i_smpl_err(m, obs_pt, run)
             # Append
-            i_dis_1_5.append(res[0])
-            i_dis_2.append(res[1])
+            i_smpl_1_5.append(res[0])
+            i_smpl_2.append(res[1])
         # Append each list    
-        err['1_5_mthd'][f'{obs_pt}_obs']['i_dis'].append(i_dis_1_5)
-        err['2_mthd'][f'{obs_pt}_obs']['i_dis'].append(i_dis_2)   
+        err['1_5_mthd'][f'{obs_pt}_obs']['i_smpl'].append(i_smpl_1_5)
+        err['2_mthd'][f'{obs_pt}_obs']['i_smpl'].append(i_smpl_2)   
     # Save after
-    jnp.save('errors_i_dis/errs_1_5stepvs2step', err)
-print('sucess!')
+    jnp.save('errors', err)
 
+print('sucess !')
