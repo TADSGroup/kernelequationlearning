@@ -68,7 +68,7 @@ def run_exp_opt_err(m,obs_pts,run):
                                             X = xy_pairs, 
                                             kernel = kernel_GP,
                                             reg = 1e-12,
-                                            seed = run
+                                            seed = 2024
                                         )
                                         )
     # Permeability field A
@@ -89,12 +89,24 @@ def run_exp_opt_err(m,obs_pts,run):
     vmapped_u_true_functions = tuple([jax.vmap(u) for u in u_true_functions]) # vmap'ed
     rhs_functions = tuple([jax.vmap(get_rhs_darcy(u)) for u in u_true_functions]) #vmap'ed
 
+    # Define the num of ghost points for each u
+    num_grid_points = 10
+    num_interior_points = 50
 
+    # # Sample collocation points for f using random points different for every function
+    # xy_ints,xy_bdys = sample_multiple_xy_grids_latin(
+    #         num_functions = m,
+    #         num_interior = num_interior_points,
+    #         x_range = [0,1],
+    #         y_range = [0,1],
+    #         num_grid_x_bdy = num_grid_points,
+    #         num_grid_y_bdy = num_grid_points,
+    #         key = pkey(23)
+    #     )
+    
     # Sample collocation points for f using same uniform grid for every function
-    xy_int_single,xy_bdy_single = build_xy_grid([0,1],[0,1],10,10)
-    xy_ints = (xy_int_single,)*m
-    xy_bdys = (xy_bdy_single,)*m
-
+    xy_ints = tuple(build_xy_grid([0,1],[0,1],7,7)[0] for m in range(m))
+    xy_bdys = tuple(build_xy_grid([0,1],[0,1],7,7)[1] for m in range(m))
 
     xy_all = tuple(jnp.vstack([xy_int,xy_bdy]) for xy_int,xy_bdy in zip(xy_ints,xy_bdys))
 
@@ -107,7 +119,7 @@ def run_exp_opt_err(m,obs_pts,run):
         xy_ints,
         xy_bdys,
         vmapped_u_true_functions,
-        pkey(run)
+        pkey(5)
     )
 
     # Build operator features
@@ -131,15 +143,12 @@ def run_exp_opt_err(m,obs_pts,run):
     # Build interpolants for u's
     k_u = get_gaussianRBF(0.5)
     u_operators = (eval_k,)
-
-    # u_models = tuple([CholInducedRKHS(
-    #     xy_all[i],
-    #     u_operators,
-    #     k_u
-    #     ) for i in range(m)])
-
-    u_model = CholInducedRKHS(xy_all[0],u_operators,k_u)
-
+    u_models = tuple([CholInducedRKHS(
+        xy_all[i],
+        u_operators,
+        k_u
+        ) for i in range(m)])
+    
     # Get necessary tuples
     observation_points = tuple(xy_obs)
     observation_values = tuple(u_obs)
@@ -149,65 +158,106 @@ def run_exp_opt_err(m,obs_pts,run):
     rhs_values = tuple(rhs_func(xy_int) for xy_int,rhs_func in zip(xy_ints,rhs_functions))
 
     all_u_params_init = tuple([
-        u_model.get_fitted_params(obs_loc,obs_val,lam = 1e-8)
-        for obs_loc,obs_val in zip(observation_points,observation_values)])
+        model.get_fitted_params(obs_loc,obs_val)
+        for obs_loc,obs_val,model in zip(observation_points,observation_values,u_models)])
 
     grid_features_u_init = jnp.vstack([(
-        u_model.evaluate_operators(feature_operators,xy_int,model_params)).reshape(
+        model.evaluate_operators(feature_operators,xy_int,model_params)).reshape(
                 len(xy_int),
                 len(feature_operators),
                 order = 'F'
-            ) for xy_int,model_params in zip(xy_ints,all_u_params_init) ])
-
+            ) for xy_int,model,model_params in zip(xy_ints,u_models,all_u_params_init) ])
+    
     grid_features_u_init = jnp.hstack([jnp.vstack(xy_ints),grid_features_u_init])
-
+    
     # P kernel
     k_P_u_part = get_centered_scaled_poly_kernel(1,grid_features_u_init[:,2:],c=1)
     k_P_x_part = get_gaussianRBF(0.4)
-
+    
     def k_P(x,y):
         return k_P_x_part(x[:2],y[:2]) * k_P_u_part(x[2:],y[2:])
         
 
     # P object        
     P_model = InducedOperatorModel(grid_features_u_init,k_P)
-    num_P_params = len(grid_features_u_init) 
+    num_P_params = len(grid_features_u_init)
 
     # P, u, f object
     collocation_points = xy_ints
-    EqnModel  = SharedOperatorPDEModel(
+    EqnModel  = OperatorPDEModel(
         P_model,
-        u_model,
+        u_models,
         observation_points,
         observation_values,
         collocation_points,
         feature_operators,
         rhs_values,
         datafit_weight = 5.,
-        num_P_operator_params = 200
+        num_P_operator_params = num_P_params
     )
 
-    # OPTIMIZE
+    ### Optimize LM - new
 
-    u_init = jnp.stack(all_u_params_init)
-    P_init = P_model.get_fitted_params(grid_features_u_init,jnp.hstack(rhs_values),lam = 1e-4)
-
-    beta_reg = 1e-8
-
-    from Optimizers import BlockArrowLM,LMParams
-    lm_params = LMParams(max_iter = 501,init_alpha = 1e-1,min_alpha = 1e-12,print_every = 100)
-    u_sol,P_sol,arrow_conv = BlockArrowLM(
-        u_init,P_init,EqnModel,beta_reg,beta_reg,
-        optParams=lm_params
-        )
+    # Initialize
+    # rhs_values = tuple(rhs_func(int_points) for rhs_func,int_points in zip(rhs_functions,collocation_points))
     
-    # Backward operator error
+    # P_init = P_model.get_fitted_params(grid_features_u_init,jnp.hstack(rhs_values))
+    # params_init = jnp.hstack(list(all_u_params_init)+[P_init])
+    params_init = jnp.hstack(list(all_u_params_init)+[jnp.zeros(m*len(xy_ints[0]))])
+    
+    
+    # Optimizer hyperparameters
+    optparams = LMParams(max_iter = 301,
+                         line_search_increase_ratio = 1.4,
+                         print_every = 100,
+                         tol = 1e-10)
+    # Run CholeskyLM 
+    params,convergence_data = CholeskyLM(
+        params_init.copy(),
+        EqnModel,
+        beta = 1e-8,
+        optParams = optparams
+    )
+    
+    # p_adjusted,refine_convergence_data = SVD_LM(
+    #     params,
+    #     EqnModel,
+    #     beta = 1e-13,
+    #     optParams = optparams
+    # )
+
+    # Optimized parameters
+    u_sols = EqnModel.get_u_params(params)
+    P_sol = EqnModel.get_P_params(params)
+
+
+    ### Errors loop
 
     # Testing grid
-    xy_fine = jnp.vstack(build_xy_grid([0,1],[0,1],100,100))
+    num_fine_grid = 50
+    x_fine,y_fine = np.meshgrid(np.linspace(0,1,num_fine_grid+4)[2:-2],np.linspace(0,1,num_fine_grid+4)[2:-2])
+    xy_fine_int = np.vstack([x_fine.flatten(),y_fine.flatten()]).T
+    
+    # S_train for 1.5 step method
+    # model_grid_features_all = EqnModel.get_stacked_eqn_features(u_sols)
+    model_grid_features_all = jnp.vstack([EqnModel.single_eqn_features(u_model,u_params,eval_points) 
+                                          for u_model,u_params,eval_points in zip(
+                                            EqnModel.u_models,
+                                            u_sols,
+                                            EqnModel.collocation_points)])
 
+    # S_train for 2 step method
+    #init_P_features = EqnModel.get_stacked_eqn_features(all_u_params_init)
+    init_P_features = jnp.vstack([EqnModel.single_eqn_features(u_model,u_params,eval_points) 
+                                          for u_model,u_params,eval_points in zip(
+                                            EqnModel.u_models,
+                                            all_u_params_init,
+                                            EqnModel.collocation_points)])
+
+    # Backward operator error
+    
     # Simulate u
-    M = 5
+    M = 3
 
     kernel_GP = get_gaussianRBF(0.5) # Same regularity as training u's
     # Sample M training functions from GP(0,K)
@@ -223,6 +273,7 @@ def run_exp_opt_err(m,obs_pts,run):
     # 1_5 step
 
     # Collocation points where to solve for \hat P (u) = f_new
+    #num_interior_points = 500
     num_interior_points = 256
     num_grid_points = 20
     # Sample collocation points for learning u
@@ -233,7 +284,7 @@ def run_exp_opt_err(m,obs_pts,run):
             y_range = [0,1],
             num_grid_x_bdy = num_grid_points,
             num_grid_y_bdy = num_grid_points,
-            key = pkey(0)
+            key = pkey(24)
         )
     # Boundary pairs
     xy_bdy = xy_boundarys[0]
@@ -253,16 +304,20 @@ def run_exp_opt_err(m,obs_pts,run):
         
         @jit
         def get_pred_hatP(input_features):
-            return P_model.predict(input_features,P_sol)
+            # Option 1 - when using P_model = OperatorModel()
+            # return P_model.predict_new(input_features,model_grid_features_all,P_sol) - before
+            return P_model.predict(input_features,P_sol) # basis points still grid_features_init (?)
                     
         @jit
         def get_pred_hatP2step(input_features):
-            init_P_features = jnp.vstack([EqnModel.single_eqn_features(u_params,eval_points) 
-                                                    for u_params,eval_points in zip(
-                                                    all_u_params_init,
-                                                    EqnModel.collocation_points)])
+            # init_P_features = EqnModel.get_stacked_eqn_features(all_u_params_init)
+            init_P_features = jnp.vstack([EqnModel.single_eqn_features(u_model,u_params,eval_points) 
+                                          for u_model,u_params,eval_points in zip(
+                                            EqnModel.u_models,
+                                            all_u_params_init,
+                                            EqnModel.collocation_points)])
             rhs_stacked = EqnModel.stacked_collocation_rhs
-            P_params_naive = P_model.get_fitted_params(init_P_features,rhs_stacked)
+            P_params_naive = P_model.get_fitted_params(init_P_features,rhs_stacked) # Compute only once
             return P_model.predict(input_features,P_params_naive)
 
         
@@ -323,9 +378,9 @@ def run_exp_opt_err(m,obs_pts,run):
 
         # Optimizer hyperparameters
         optparams = LMParams(max_iter = 301,
-                            line_search_increase_ratio = 1.4,
-                            print_every = 100,
-                            tol = 1e-10)
+                         line_search_increase_ratio = 1.4,
+                         print_every = 100,
+                         tol = 1e-10)
         
         u_params_pde, _ = CholeskyLM(
             new_u_init.copy(),
@@ -334,8 +389,33 @@ def run_exp_opt_err(m,obs_pts,run):
             optParams = optparams
         )
 
+        # u_params_pde,_ = CholeskyLM(
+        #     new_u_init.copy(),
+        #     PdeModel,
+        #     beta = 0.,
+        #     max_iter = 101,
+        #     init_alpha=0.05,
+        #     line_search_increase_ratio=1.4,
+        #     print_every = 10
+        # )
+
+        # u_pde_adj,_ = SVD_LM(u_params_pde,PdeModel,1e-1,150)
+
+    #     u_pde_adj,_ = SVD_LM(
+    #     u_params_pde,
+    #     EqnModel,
+    #     beta = 1e-13,
+    #     optParams = optparams
+    # )
 
         return u_params_pde
+
+
+    
+    # Define fine grid to test
+    num_fine_grid = 50
+    x_fine,y_fine = np.meshgrid(np.linspace(0,1,num_fine_grid),np.linspace(0,1,num_fine_grid))
+    xy_fine = np.vstack([x_fine.flatten(),y_fine.flatten()]).T
 
     true = [u_new(xy_fine) for u_new in u_news]
 
@@ -351,30 +431,32 @@ def run_exp_opt_err(m,obs_pts,run):
 
     i_opt_1_5 = jnp.mean(jnp.array([get_nrmse(t,p) for t,p in zip(true,pred1_5)]))
     i_opt_2 = jnp.mean(jnp.array([get_nrmse(t,p) for t,p in zip(true,pred2)]))
-    
-
-
 
     return i_opt_1_5, i_opt_2
+
 
 # Dictionary to store results
 err = {
     '1_5_mthd': {
         '2_obs': {'i_opt': []},
         '4_obs': {'i_opt': []},
-        '8_obs': {'i_opt': []}
+        '6_obs': {'i_opt': []},
+        '8_obs': {'i_opt': []},
+        '10_obs': {'i_opt': []}
                   },
     '2_mthd':   {
         '2_obs': {'i_opt': []},
         '4_obs': {'i_opt': []},
-        '8_obs': {'i_opt': []}
+        '6_obs': {'i_opt': []},
+        '8_obs': {'i_opt': []},
+        '10_obs': {'i_opt': []}
                 }
 }
 
 # Run main loop
-NUM_FUN_LIST = [2,4,8,16,32]
+NUM_FUN_LIST = [2,4,6,8]
 NUM_RUNS = 10
-OBS_PTS_LIST = [2,4,8]
+OBS_PTS_LIST = [2,4,6,8,10]
 for obs_pt in OBS_PTS_LIST:
     for m in NUM_FUN_LIST:
         i_opt_1_5 = []

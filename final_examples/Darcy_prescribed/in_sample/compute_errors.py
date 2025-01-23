@@ -92,7 +92,7 @@ def run_exp_i_smpl_err(m,obs_pts,run):
 
 
     # Sample collocation points for f using same uniform grid for every function
-    xy_int_single,xy_bdy_single = build_xy_grid([0,1],[0,1],15,15)
+    xy_int_single,xy_bdy_single = build_xy_grid([0,1],[0,1],10,10)
     xy_ints = (xy_int_single,)*m
     xy_bdys = (xy_bdy_single,)*m
 
@@ -263,7 +263,7 @@ err = {
 }
 
 # Run main loop
-NUM_FUN_LIST = [2,4,8,16]
+NUM_FUN_LIST = [2,4,8,16,32]
 NUM_RUNS = 10
 OBS_PTS_LIST = [2,4,8]
 for obs_pt in OBS_PTS_LIST:
