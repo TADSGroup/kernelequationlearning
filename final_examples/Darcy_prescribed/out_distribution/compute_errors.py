@@ -1,6 +1,6 @@
 # imports
 import jax
-jax.config.update("jax_default_device",jax.devices()[2])
+jax.config.update("jax_default_device",jax.devices()[0])
 jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 from jax import jit,grad,jacfwd,jacrev,vmap
@@ -62,6 +62,8 @@ def run_exp_o_dis_err(m,obs_pts,run):
         i_opt_2 (float): Error for Phat (2 step) for in-sample functions.
 
     '''   
+    seed = int(m*obs_pts*(run+1))
+
     # Sample m training functions from a GP
     kernel_GP = get_gaussianRBF(0.5)
     xy_pairs = get_xy_grid_pairs(50,0,1,0,1) # Pairs to build interpolants
@@ -69,7 +71,7 @@ def run_exp_o_dis_err(m,obs_pts,run):
                                             X = xy_pairs, 
                                             kernel = kernel_GP,
                                             reg = 1e-12,
-                                            seed = run
+                                            seed = seed
                                         )
                                         )
     # Permeability field A
@@ -108,7 +110,7 @@ def run_exp_o_dis_err(m,obs_pts,run):
         xy_ints,
         xy_bdys,
         vmapped_u_true_functions,
-        pkey(run)
+        pkey(seed)
     )
 
     # Build operator features
@@ -243,7 +245,7 @@ def run_exp_o_dis_err(m,obs_pts,run):
                     X = xy_pairs, 
                     kernel = kernel_GP,
                     reg = 1e-12,
-                    seed = run
+                    seed = seed
                     )
     vmapped_w_train_functions = tuple([jax.vmap(w) for w in w_train_functions]) # vmap'ed
     w_rhs_functions = tuple([jax.vmap(get_rhs_darcy(w)) for w in w_train_functions]) #vmap'ed

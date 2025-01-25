@@ -1,6 +1,6 @@
 # imports
 import jax
-# jax.config.update("jax_default_device",jax.devices()[1])
+jax.config.update("jax_default_device",jax.devices()[2])
 jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 from jax import jit,grad,jacfwd,jacrev,vmap
@@ -19,7 +19,7 @@ from importlib import reload
 import KernelTools
 reload(KernelTools)
 from KernelTools import *
-from EquationModel import OperatorModel, OperatorPDEModel,CholInducedRKHS,InducedOperatorModel
+from EquationModel import OperatorModel, OperatorPDEModel,CholInducedRKHS,InducedOperatorModel,SharedOperatorPDEModel
 from plotting import plot_obs,plot_compare_error
 from evaluation_metrics import get_nrmse,table_u_errors
 from data_utils import (
@@ -43,6 +43,8 @@ import importlib
 importlib.reload(Optimizers)
 from Optimizers import CholeskyLM,SVD_LM
 from Optimizers.solvers_base import *
+
+from Optimizers import BlockArrowLM,LMParams
 
 
 # Operator learning error 
