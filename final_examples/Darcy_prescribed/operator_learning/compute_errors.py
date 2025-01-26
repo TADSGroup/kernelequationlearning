@@ -63,6 +63,8 @@ def run_exp_opt_err(m,obs_pts,run):
 
     '''
     
+    seed = int(m*obs_pts*(run+1))
+
     # Sample m training functions from a GP
     kernel_GP = get_gaussianRBF(0.5)
     xy_pairs = get_xy_grid_pairs(50,0,1,0,1) # Pairs to build interpolants
@@ -70,7 +72,7 @@ def run_exp_opt_err(m,obs_pts,run):
                                             X = xy_pairs, 
                                             kernel = kernel_GP,
                                             reg = 1e-12,
-                                            seed = run
+                                            seed = seed
                                         )
                                         )
     # Permeability field A
@@ -109,7 +111,7 @@ def run_exp_opt_err(m,obs_pts,run):
         xy_ints,
         xy_bdys,
         vmapped_u_true_functions,
-        pkey(run)
+        pkey(seed)
     )
 
     # Build operator features
@@ -203,7 +205,7 @@ def run_exp_opt_err(m,obs_pts,run):
         optParams=lm_params
         )
     
-    # Backward operator error
+   # Backward operator error
 
     # Testing grid
     xy_fine = jnp.vstack(build_xy_grid([0,1],[0,1],100,100))
@@ -217,7 +219,7 @@ def run_exp_opt_err(m,obs_pts,run):
                     X = xy_pairs, 
                     kernel = kernel_GP,
                     reg = 1e-12,
-                    seed = run
+                    seed = seed
                     )
     u_news = tuple([jax.vmap(u_new_) for u_new_ in u_news_]) # vmap'ed
     f_news = tuple([jax.vmap(get_rhs_darcy(u_new_)) for u_new_ in u_news_]) #vmap'ed
