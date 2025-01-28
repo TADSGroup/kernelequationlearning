@@ -1,6 +1,6 @@
 # imports
 import jax
-jax.config.update("jax_default_device",jax.devices()[2])
+jax.config.update("jax_default_device",jax.devices()[3])
 jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 from jax import jit,grad,jacfwd,jacrev,vmap
