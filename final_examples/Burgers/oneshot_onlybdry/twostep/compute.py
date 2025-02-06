@@ -163,6 +163,11 @@ new_u_true_function,new_ut_true_function,new_interp,t_vals,sols_new = (
                        n_finite_diff=1999)
 )
 
+# new_u vals at fine grid at IC
+new_u_true_IC = new_u_true_function(jnp.vstack([0.0*jnp.ones(num_fine_grid), xfine]).T)
+# u vals at fine grid at FC
+new_u_true_FC = new_u_true_function(jnp.vstack([1.0*jnp.ones(num_fine_grid), xfine]).T)
+
 def get_u_pde_adj(u0_new):
     # Phat of 2 step method
     @jit
@@ -270,7 +275,9 @@ data = {'tx_obs': tx_obs,
         'u_true_IC': u_true_IC,
         'u_true_FC': u_true_FC,
         'new_u_true': new_u_true,
-        'new_u_pred': new_u_pred
+        'new_u_pred': new_u_pred,
+        'new_u_true_IC': new_u_true_IC,
+        'new_u_true_FC': new_u_true_FC,
 }
 
 # save data
