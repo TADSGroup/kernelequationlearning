@@ -171,7 +171,7 @@ p_adjusted,refine_convergence_data = SVD_LM(params,
                                             optParams=svd_params)
 
 # loss history
-loss_vals = convergence_data.loss_vals
+loss_vals = jnp.hstack([convergence_data.loss_vals,refine_convergence_data.loss_vals])
 
 # get u params
 u_sol = p_adjusted[:u_model.num_params]
