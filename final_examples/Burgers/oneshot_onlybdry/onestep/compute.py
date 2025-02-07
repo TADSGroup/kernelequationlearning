@@ -170,6 +170,9 @@ p_adjusted,refine_convergence_data = SVD_LM(params,
                                             beta = 1e-16,
                                             optParams=svd_params)
 
+# loss history
+loss_vals = convergence_data.loss_vals
+
 # get u params
 u_sol = p_adjusted[:u_model.num_params]
 # get P params
@@ -311,6 +314,7 @@ data = {'tx_obs': tx_obs,
         'new_u_pred': new_u_pred,
         'new_u_true_IC': new_u_true_IC,
         'new_u_true_FC': new_u_true_FC,
+        'loss_vals': loss_vals
 }
 
 # save data
