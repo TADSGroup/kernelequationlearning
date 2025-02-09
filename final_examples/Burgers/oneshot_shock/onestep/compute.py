@@ -170,7 +170,8 @@ params_adjusted,refine_convergence_data = SVD_LM(params,
                                                  optParams = optparams)
 
 # loss history
-loss_vals = jnp.hstack([convergence_data.loss_vals,refine_convergence_data.loss_vals])
+loss_vals_LM = convergence_data.loss_vals
+loss_vals_SVDLM = refine_convergence_data.loss_vals
 
 # get u params
 u_sol = params_adjusted[:u_model.num_params]
@@ -194,7 +195,8 @@ data = {'tx_obs': tx_obs,
         'u_pred': u_pred,
         'u_true_IC': u_true_IC,
         'u_true_FC': u_true_FC,
-        'loss_vals': loss_vals
+        'loss_vals_LM': loss_vals_LM,
+        'loss_vals_SVDLM': loss_vals_SVDLM
 }
 
 # save data
