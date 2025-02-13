@@ -1,6 +1,6 @@
 # imports
 import jax
-jax.config.update("jax_default_device",jax.devices()[0])
+jax.config.update("jax_default_device",jax.devices()[3])
 jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 from jax import jit,grad,jacfwd,jacrev,vmap
@@ -187,7 +187,7 @@ def run_exp_o_dis_err(m,obs_pts,run):
         feature_operators,
         rhs_values,
         datafit_weight = 5.,
-        num_P_operator_params = num_P_params
+        num_P_operator_params = 200
     )
 
     # OPTIMIZE
