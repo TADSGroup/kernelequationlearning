@@ -1,6 +1,6 @@
 # imports
 import jax
-jax.config.update("jax_default_device",jax.devices()[3])
+jax.config.update("jax_default_device",jax.devices()[2])
 jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 from jax import jit,grad,jacfwd,jacrev,vmap
@@ -94,7 +94,7 @@ def run_exp_o_dis_err(m,obs_pts,run):
 
 
     # Sample collocation points for f using same uniform grid for every function
-    xy_int_single,xy_bdy_single = build_xy_grid([0,1],[0,1],10,10)
+    xy_int_single,xy_bdy_single = build_xy_grid([0,1],[0,1],15,15)
     xy_ints = (xy_int_single,)*m
     xy_bdys = (xy_bdy_single,)*m
 
@@ -163,6 +163,8 @@ def run_exp_o_dis_err(m,obs_pts,run):
             ) for xy_int,model_params in zip(xy_ints,all_u_params_init) ])
 
     grid_features_u_init = jnp.hstack([jnp.vstack(xy_ints),grid_features_u_init])
+    num_P_inducing = 200
+    input_feature_sample = jax.random.choice(pkey(320),grid_features_u_init,(num_P_inducing,))
 
     # P kernel
     k_P_u_part = get_centered_scaled_poly_kernel(1,grid_features_u_init[:,2:],c=1)
@@ -173,8 +175,9 @@ def run_exp_o_dis_err(m,obs_pts,run):
         
 
     # P object        
-    P_model = InducedOperatorModel(grid_features_u_init,k_P)
-    num_P_params = len(grid_features_u_init)
+    P_model = InducedOperatorModel(input_feature_sample,k_P)
+    # P_model = InducedOperatorModel(grid_features_u_init,k_P)
+    # num_P_params = len(grid_features_u_init)
 
     # P, u, f object
     collocation_points = xy_ints
@@ -187,7 +190,7 @@ def run_exp_o_dis_err(m,obs_pts,run):
         feature_operators,
         rhs_values,
         datafit_weight = 5.,
-        num_P_operator_params = 200
+        num_P_operator_params = num_P_inducing
     )
 
     # OPTIMIZE
@@ -195,7 +198,7 @@ def run_exp_o_dis_err(m,obs_pts,run):
     u_init = jnp.stack(all_u_params_init)
     P_init = P_model.get_fitted_params(grid_features_u_init,jnp.hstack(rhs_values),lam = 1e-4)
 
-    beta_reg = 1e-8
+    beta_reg = 1e-12
 
 
     lm_params = LMParams(max_iter = 501,init_alpha = 1e-1,min_alpha = 1e-12,print_every = 100)
@@ -284,7 +287,7 @@ err = {
 }
 
 # Run main loop
-NUM_FUN_LIST = [2,4,8,16,32]
+NUM_FUN_LIST = [2,4,8,16,32,64,128]
 NUM_RUNS = 10
 OBS_PTS_LIST = [2,4,8]
 for obs_pt in OBS_PTS_LIST:
