@@ -10,7 +10,7 @@ Algorithms and Error Analysis' by Jalalian, Osorio, Hsu, Hosseini and Owhadi.
 
 ## Conda Environments
 
-We use two conda environments since the compatibility of the kernel implementation and the neural based implementation are different. 
+We use two separate conda environments due to compatibility issues between the kernel-based implementation and the neural-based implementation.
 
 - `keql_env`: Main environment to run the kernel methods for equation learning.
 
