@@ -1,32 +1,19 @@
 # Equation Learning with kernels
 
-The general structure of the project looks like this:
-```
-KEQL
-├── README.md
-├── final_examples
-│   ├── Burgers
-│   │    ├── benchmark_fixedICs
-│   │    ├── benchmark_varyICs
-│   │    ├── oneshot_onlybdry
-│   │    └── oneshot_shock
-│   ├── Darcy
-│   │    ├── in_distribution
-│   │    ├── in_sample
-│   │    ├── operator_learning
-│   │    └── out_distribution
-│   │
-│   └── ODE
-│        └── duffing.ipynb
-└── keql_tools
-    ├── BurgerSolver.py
-    ├── darcySolver.py
-    ├── EquationModel.py
-    ├── HessAnalyze.py
-    ├── Kernels.py
-    ├── KernelTools.py
-    ├── Optimizers.py
-    └── setup.py
-```
+JAX implementation of 
 
-Take a look at `making_env.txt`` to see how to install `keql_tools` and run the experiments.
+> 'Data-Efficient Kernel Methods for Learning 
+Differential Equations and Their Solution Operators: 
+Algorithms and Error Analysis' by Jalalian, Osorio, Hsu, Hosseini and Owhadi.
+
+
+
+## Conda Environments
+
+Since we run benchmarks using a [PINN-based method](https://github.com/isds-neu/EQDiscovery) that runs on a different version of Python and uses TensorFlow 1.5, we hace separate conda environments for learning differential equations with the different methods.
+
+
+## Usage 
+
+Under 'final_examples/' there is a folder that contains the code for each PDE explained in the paper. 
+
