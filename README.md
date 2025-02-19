@@ -1,4 +1,4 @@
-# Equation Learning with kernels
+# Kernel Equation Learning: KEqL
 
 JAX implementation of 
 
