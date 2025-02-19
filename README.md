@@ -10,14 +10,18 @@ Algorithms and Error Analysis' by Jalalian, Osorio, Hsu, Hosseini and Owhadi.
 
 ## Conda Environments
 
-Since we run benchmarks using a [PINN-based method](https://github.com/isds-neu/EQDiscovery) that we refer to as PINN-SR that runs on a different version of Python and uses TensorFlow 1.5, we hace separate conda environments for learning differential equations with the different methods.
+We use two conda environments since the compatibility of the kernel implementation and the neural based implementation are different. 
+
+- `keql_env`: Main environment to run the kernel methods for equation learning.
+
+- `pinnsr_env`: Environment used to run code from the [PINN-based method](https://github.com/isds-neu/EQDiscovery) that we refer to as PINN-SR.
 
 
 ## Usage 
 
-To reproduce the results obtained in the paper you can check the results for each experiment under 'final_examples/' using the conda environemnt `keql_env`. Results from PINN-SR can be obtained by running the experiments using the conda environment `pinnsr-env`.
+- Reproduce examples: See implementation under `final_examples/`.
 
-In order to use it for a new PDE, refer to an existing example and how the tools under `keql_tools/` are being implemented.
+- Learn a new PDE: Use source code implemented in `keql_tools/`.
 
 
 
