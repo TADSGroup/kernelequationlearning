@@ -4,7 +4,7 @@ JAX implementation of
 
 > 'Data-Efficient Kernel Methods for Learning 
 Differential Equations and Their Solution Operators: 
-Algorithms and Error Analysis' by Jalalian, Osorio, Hsu, Hosseini and Owhadi.
+Algorithms and Error Analysis' by Jalalian, Osorio, Hsu, Hosseini and Owhadi. See preprint on arXiv [here](https://arxiv.org/abs/2503.01036).
 
 
 
