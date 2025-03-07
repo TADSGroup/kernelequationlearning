@@ -19,6 +19,6 @@ We use two separate conda environments due to compatibility issues between the k
 
 ## Usage 
 
-- Reproduce examples: See implementation under `final_examples/`.
+- Reproduce examples: See implementation under `examples/`.
 
 - Learn a new PDE: Use source code implemented in `keql_tools/`.
