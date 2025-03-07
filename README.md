@@ -12,7 +12,7 @@ Algorithms and Error Analysis' by Jalalian, Osorio, Hsu, Hosseini and Owhadi. Se
 
 We use two separate conda environments due to compatibility issues between the kernel-based implementation and the neural-based implementation.
 
-- `keql_env`: Main environment to run the kernel methods for equation learning.
+- `keql_env`: Main environment to run the kernel methods for equation learning. Additionally, you can install the tools inside `keql_tools` by running the command in the terminal `pip install -e /path/to/keql_tools`.
 
 - `pinnsr_env`: Environment used to run code from the [PINN-based method](https://github.com/isds-neu/EQDiscovery) that we refer to as PINN-SR.
 

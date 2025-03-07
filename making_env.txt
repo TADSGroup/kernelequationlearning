@@ -1,4 +1,0 @@
-conda install pip
-pip install -U "jax[cuda12]"
-pip install matplotlib numpy scipy tqdm ipykernel ipython jupyter jaxopt sympy
-pip install -e keql_tools
