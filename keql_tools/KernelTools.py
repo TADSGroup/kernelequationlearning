@@ -45,6 +45,12 @@ def get_selected_grad(k,index,selected_index):
 def dx_k(k,index):
     return get_selected_grad(k,index,1)
 
+def dtt_k(k,index):
+    return get_selected_grad(get_selected_grad(k,index,0),index,0)
+
+def dtx_k(k,index):
+    return get_selected_grad(get_selected_grad(k,index,1),index,0)
+
 def dxx_k(k,index):
     return get_selected_grad(get_selected_grad(k,index,1),index,1)
 
