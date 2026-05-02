@@ -95,7 +95,7 @@ u_true_FC = u_true_function(jnp.vstack([1.0*jnp.ones(num_fine_grid), xfine]).T)
 # u basis ops
 u_operators = (eval_k,dx_k,dt_k)
 # L ops
-feature_operators = (eval_k,dx_k,dxx_k)
+feature_operators = (eval_k,dx_k)
 
 # u kernel that also depends on params
 def param_ani_gaussian_RBF(x,y,params):
