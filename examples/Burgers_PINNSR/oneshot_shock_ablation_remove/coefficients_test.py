@@ -17,7 +17,7 @@ import jax.numpy as jnp
 
 # Neural network 
 # def get_burgers_coeffs_pinnsr(n_obs,run):
-with tf.device('/device:GPU:0'):
+with tf.device('/device:GPU:1'):
 # =============================================================================
 #  define loss histories to record convergence
 # =============================================================================
@@ -36,7 +36,7 @@ with tf.device('/device:GPU:0'):
     loss_u_history_Adam = np.array([0])
     loss_f_history_Adam = np.array([0])
     loss_lambda_history_Adam = np.array([0])
-    lambda_history_Adam = np.zeros((10,1))  
+    lambda_history_Adam = np.zeros((6,1))
     loss_history_Adam_val = np.array([0])
     loss_u_history_Adam_val = np.array([0])
     loss_f_history_Adam_val = np.array([0])
@@ -47,9 +47,9 @@ with tf.device('/device:GPU:0'):
     loss_lambda_history_STRidge = np.array([0])
     optimaltol_history = np.array([0])   
     tol_history_STRidge = np.array([0])
-    lambda_normalized_history_STRidge = np.zeros((10,1))
-    
-    lambda_history_STRidge = np.zeros((10,1))
+    lambda_normalized_history_STRidge = np.zeros((6,1))
+
+    lambda_history_STRidge = np.zeros((6,1))
     ridge_append_counter_STRidge = np.array([0])
     
     # Loss histories for pretraining
@@ -62,7 +62,7 @@ with tf.device('/device:GPU:0'):
     loss_f_history_val_Pretrain = np.array([0])
     step_Pretrain = 0
     
-    lambda_history_Pretrain = np.zeros((10,1))  
+    lambda_history_Pretrain = np.zeros((6,1))
     
     np.random.seed(1234)
     tf.set_random_seed(1234)
@@ -83,12 +83,12 @@ with tf.device('/device:GPU:0'):
             # Initialize NNs
             self.weights, self.biases = self.initialize_NN(layers)
             
-            config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=True)
-            config.gpu_options.allow_growth = True
+            config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
+            config.gpu_options.per_process_gpu_memory_fraction = 0.7
             self.sess = tf.Session(config = config)
             
             # Initialize parameters
-            self.lambda1 = tf.Variable(tf.zeros([10, 1], dtype=tf.float32), dtype=tf.float32, name = 'lambda')
+            self.lambda1 = tf.Variable(tf.zeros([6, 1], dtype=tf.float32), dtype=tf.float32, name = 'lambda')
             
             # Specify the list of trainable variables 
             var_list_1 = self.biases + self.weights
@@ -136,12 +136,9 @@ with tf.device('/device:GPU:0'):
             self.t_val_tf = tf.placeholder(tf.float32, shape=[None, self.t_val.shape[1]])
             self.u_val_tf = tf.placeholder(tf.float32, shape=[None, self.u_val.shape[1]])
                     
-            self.u_val_pred = self.net_u(self.x_val_tf, self.t_val_tf)
-            self.f_val_pred, _, _ = self.net_f(self.x_val_tf, self.t_val_tf, self.x_val.shape[0])
-            
-            self.loss_u_val = tf.reduce_mean(tf.square(self.u_val_tf - self.u_val_pred))
-            self.loss_f_val = tf.reduce_mean(tf.square(self.f_val_pred))
-            self.loss_val = tf.log(self.loss_u_val  + self.loss_f_val) # log loss
+            self.loss_u_val = tf.constant(0.0)
+            self.loss_f_val = tf.constant(0.0)
+            self.loss_val = tf.constant(0.0)
                         
             ######### Optimizor #########################
             self.optimizer = tf.contrib.opt.ScipyOptimizerInterface(self.loss, 
@@ -216,28 +213,20 @@ with tf.device('/device:GPU:0'):
             u = self.net_u(x,t)
             u_t = tf.gradients(u, t)[0]
             u_x = tf.gradients(u, x)[0]
-            u_xx = tf.gradients(u_x, x)[0]
-            u_xxx = tf.gradients(u_xx, x)[0]    
+            # u_xx = tf.gradients(u_x, x)[0]
+            # u_xxx = tf.gradients(u_xx, x)[0]    
             Phi = tf.concat([tf.constant(1, shape=[N_f, 1], dtype=tf.float32),
                              u,
                              u_x,
-                             u_xx,
                              u**2,
                              u*u_x,
-                             u*u_xx,
-                             u_x*u_x,
-                             u_x*u_xx,
-                             u_xx*u_xx], 1)    
+                             u_x*u_x], 1)    
             self.library_description = ['1',
                                         'u',
                                         'u_x',
-                                        'u_xx',
                                         'u**2',
                                         'u*u_x',
-                                        'u*u_xx',
-                                        'u_x*u_x',
-                                        'u_x*u_xx',
-                                        'u_xx*u_xx']
+                                        'u_x*u_x']
             
             f = tf.matmul(Phi, self.lambda1) - u_t      
             return f, Phi, u_t
