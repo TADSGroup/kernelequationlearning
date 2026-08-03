@@ -1,8 +1,9 @@
-# Ablation workflow notes (Burgers) — working notes, not part of the paper
+# Ablation workflow notes (Burgers + Darcy) — working notes, not part of the paper
 
 Written 2026-08-02 after building the `oneshot_shock_ablation_{add,remove}` and
 `oneshot_onlybdry_ablation_{add,remove}` experiments, to save re-discovery time
-before starting on `examples/Darcy`. Delete this file once it's no longer useful.
+before starting on `examples/Darcy`. §6 was updated 2026-08-03 once the Darcy
+ablation was actually built and run. Delete this file once it's no longer useful.
 
 ## 1. Conda environments — what to use for what
 
@@ -110,23 +111,73 @@ Two derivative-feature sets, applied consistently everywhere they appear:
   term (`u_xx`, coeff ≈0.070) than the committed run (`u_tx**2`, coeff ≈0.00011,
   i.e. noise) — this is why PINN-SR training stays on CPU.
 
-## 6. Darcy — NOT investigated yet, don't assume the above transfers directly
+## 6. Darcy ablation — built and run 2026-08-03
 
-Quick look at `examples/Darcy/` (2026-08-02, structure only, no code read):
-- No `onestep`/`twostep`/`PINNSR` subfolder split like Burgers has.
-- No `Darcy_PINNSR` (or similar) companion directory — PINN-SR baseline may not
-  even apply to Darcy.
-- Folders are instead `in_distribution/`, `in_sample/`, `operator_learning/`,
-  `out_distribution/`, each with `compute_errors.py`, `errors.npy`, `one_run.ipynb`.
-- Darcy is an elliptic (time-independent) PDE, so the whole "add/remove `dtx_k`,
-  `dtt_k`" ablation framing (which is about *time*-derivative features) likely
-  doesn't apply as-is — would need to figure out what the analogous feature-ablation
-  axis even is for Darcy before doing anything.
-- `keql_tools/darcy_data.py` and `keql_tools/pde_solvers` likely hold the relevant
-  data-generation code — haven't opened them yet.
+Darcy's folder shape and ablation axis really are different from Burgers, as §6
+originally guessed — confirmed by actually reading `compute_errors.py` this time
+rather than just the directory listing:
 
-**Next session: read `examples/Darcy/*/one_run.ipynb` and `compute_errors.py` from
-scratch before assuming any Burgers convention applies.**
+- No `onestep`/`twostep`/`PINNSR` split and no `Darcy_PINNSR` twin — every experiment
+  type (`in_distribution/`, `in_sample/`, `operator_learning/`, `out_distribution/`)
+  is a single `compute_errors.py` that reports **two** numbers per run, `1_5_mthd`
+  (1-step) and `2_mthd` (2-step). There is no third method and no PINN-SR analog for
+  Darcy, so none of §2–§4's PINN-SR handoff machinery applies here.
+- Darcy is elliptic, so the ablation axis isn't time-derivative features (`dtx_k`,
+  `dtt_k`) like Burgers — it's *how many spatial-derivative features the P-model's
+  library is built from*. The true operator is
+  `P[u] = -div(a(x,y)∇u) = -(a_x u_x + a u_xx + a_y u_y + a u_yy)`, linear in exactly
+  four features: `u_x, u_y, u_xx, u_yy` — no zeroth-order `u` term, no mixed partial
+  `u_xy`. The catch: **today's existing `feature_operators` in every Darcy
+  `compute_errors.py` is already `(eval_k, diff_x_op, diff_xx_op, diff_y_op,
+  diff_yy_op, diff_xy_op)`** — a superset that adds `eval_k` (=`u`) and `diff_xy_op`
+  (the cross term) beyond what the true operator needs. So "today's default" is
+  itself the add/superset case, not a neutral baseline — there's no existing
+  "exact" or "remove" config to compare against, both had to be built from scratch.
+- Built three new top-level folders, each with `in_distribution/`,
+  `out_distribution/`, `operator_learning/` subfolders (skipped `in_sample/` — not
+  needed for this study), one `compute_errors.py` cloned per experiment type:
+  - `Darcy/ablation_extra_features/` — today's feature set unchanged (6 ops, superset).
+  - `Darcy/ablation_exact_features/` — `(diff_x_op, diff_xx_op, diff_y_op, diff_yy_op)`,
+    4 ops, matches the true operator exactly.
+  - `Darcy/ablation_missing_features/` — `(eval_k, diff_x_op, diff_y_op)`, 3 ops,
+    drops both second derivatives so the diffusion term has no way to enter the fit.
+  `u_operators = (eval_k,)` (builds the state/`u_model` basis, separate from the
+  P-model's `feature_operators` library) stays untouched in all three, same
+  convention as §3 established for Burgers.
+- Per file, only **3 mechanical edits**, everything else byte-identical to the
+  existing Darcy script: (1) the `feature_operators = tuple([...])` line, (2) the
+  hard-coded `jax.devices()[2]`/`[3]` pin → `jax.devices()[0]` (this machine only has
+  2 GPUs, indices 0/1 — `[2]`/`[3]` are dead code in the existing scripts *today*,
+  would IndexError if run as-is), (3) the `NUM_FUN_LIST × OBS_PTS_LIST × 10-seed`
+  sweep at the bottom replaced with **one fixed run at `m=32, obs_pts=2`** — the user
+  wanted a single error-table entry per (config, error-type, method), not the
+  existing sweep-and-average. Much simpler than Burgers' PINN-SR column-matching:
+  no imports to touch (the `diff_*_op` helpers are locally-defined closures in every
+  file, not `KernelTools` imports), no second file to keep in sync.
+- Each run is fast (~25s–2min on GPU 0, `keql_legacy`), so all 9 runs (3 configs × 3
+  error types) went sequentially in one script rather than needing parallel GPUs.
+
+**Results (m=32, obs_pts=2, single run, NRMSE):**
+
+| Config | Error type | 1-step | 2-step |
+|---|---|---|---|
+| extra_features (today's default) | in_distribution | 0.01421 | 0.12278 |
+| | out_distribution | 0.00702 | 0.07146 |
+| | operator_learning | 0.00132 | 0.03825 |
+| exact_features (true operator) | in_distribution | 0.00542 | 0.09089 |
+| | out_distribution | 0.00302 | 0.05112 |
+| | operator_learning | 0.00059 | 0.03436 |
+| missing_features (no 2nd derivatives) | in_distribution | 1.71639 | 0.81551 |
+| | out_distribution | 0.84096 | 0.91210 |
+| | operator_learning | 0.62220 | 0.97530 |
+
+`exact_features` beats `extra_features` on every single cell (both methods, all
+three error types) — the two extraneous terms (`u`, `u_xy`) don't just fail to help,
+they measurably hurt (operator_learning 1-step: 0.00132 → 0.00059, >2x better once
+dropped). `missing_features` collapses everything by 1–3 orders of magnitude, since
+without `u_xx`/`u_yy` in the library the diffusion term literally cannot be
+expressed — confirms the feature-completeness story is the right ablation axis for
+Darcy, mirroring what §5's Burgers `remove` case showed for `dxx_k`.
 
 ## 7. Loose ends from today, not yet resolved
 
@@ -137,3 +188,6 @@ scratch before assuming any Burgers convention applies.**
   jax→numpy swap and `pinnsr_gpu` switch were only prototyped in a scratch copy,
   then explicitly NOT applied to the real repo — see §1, PINN-SR stays on
   `pinnsr_legacy`/CPU there).
+- `examples/Darcy/ablation_{extra,exact,missing}_features/` (§6) are created and run
+  but **not committed**. Existing `examples/Darcy/{in_distribution,out_distribution,
+  operator_learning,in_sample}` are untouched — the new folders are purely additive.
