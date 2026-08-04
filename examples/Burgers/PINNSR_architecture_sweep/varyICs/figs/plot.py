@@ -83,7 +83,6 @@ def plot_metric(key, out_path, clip_diverged):
     set_log_ticks(ax)
 
     plt.legend(fontsize=13, loc='upper right', ncol=3)
-    plt.xticks([])
     plt.savefig(out_path, dpi=300, bbox_inches='tight', format='pdf')
     plt.close()
 
