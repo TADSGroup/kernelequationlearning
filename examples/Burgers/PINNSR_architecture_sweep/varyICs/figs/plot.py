@@ -18,6 +18,22 @@ DIVERGED_THRESHOLD = 1.0
 
 errors = np.load('../errors_archsweep.npy', allow_pickle=True).item()
 
+# Reference curve: mean PINN-SR error (over 10 runs) from the main benchmark run
+# (../../benchmark_varyICs/i_smpl_errors/e_ismpl_PINNSR.npy), used there with an
+# 8x20 architecture. Hardcoded here rather than recomputed -- these are just the
+# already-plotted mean values from benchmark_varyICs/figs/u_errors_varyIC.pdf and
+# P_errors_varyIC.pdf, painted on top for reference. Not subject to DIVERGED_THRESHOLD
+# masking -- it's a fixed reference line, not one of the swept architectures.
+BENCHMARK_LABEL = r'8$\times$20'
+BENCHMARK = {
+    'u': [2.857738684117794, 2.8204502917826177, 2.7959949024021626,
+          2.8285130515694616, 2.8101908955723047, 2.7994784779846666,
+          2.8143752928823234, 2.809718842431903, 2.7992257218807937],
+    'P': [1.6085985839366912, 1.6116261035203934, 1.4447898387908935,
+          1.3252126544713974, 1.4122688114643096, 1.1584774896502494,
+          1.5895607948303223, 1.560141858458519, 1.2773570813238622],
+}
+
 
 def diverged_mask(arch):
     u = np.array(errors[arch]['u'], dtype=float)
@@ -65,6 +81,9 @@ def plot_metric(key, out_path, clip_diverged):
         plt.plot(N_OBS, plot_vals, color='black', label=LABELS[arch],
                   linestyle=LINESTYLES[arch], marker='o', markersize=4)
 
+    plt.plot(N_OBS, BENCHMARK[key], color='black', label=BENCHMARK_LABEL,
+              linestyle='dashdot', marker='o', markersize=4)
+
     plt.yscale('log')
     ax = plt.gca()
 
@@ -82,7 +101,9 @@ def plot_metric(key, out_path, clip_diverged):
     # keep the tight autoscaled range, just show more y-axis tick labels for readability
     set_log_ticks(ax)
 
-    plt.legend(fontsize=13, loc='upper right', ncol=3)
+    # Legend moved above the axes: with 4 series (the flat 8x20 reference line sits
+    # near the top of the clipped view) an in-plot "upper right" box would overlap data.
+    plt.legend(fontsize=13, loc='lower center', bbox_to_anchor=(0.5, 1.02), ncol=4)
     plt.savefig(out_path, dpi=300, bbox_inches='tight', format='pdf')
     plt.close()
 
