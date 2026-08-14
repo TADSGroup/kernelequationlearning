@@ -12,6 +12,12 @@ N_OBS = [10, 30, 50, 100, 200, 300, 400, 500, 600]
 ARCHS = ['2x64', '3x128', '4x256']
 LABELS = {'2x64': r'2$\times$64', '3x128': r'3$\times$128', '4x256': r'4$\times$256'}
 LINESTYLES = {'2x64': 'solid', '3x128': 'dashed', '4x256': 'dotted'}
+# One marker per curve so the series stay distinguishable in grayscale even where the
+# lines overlap; the star reads much smaller than the others at equal markersize.
+MARKERS = {'2x64': '^', '3x128': 'o', '4x256': 's'}
+MARKERSIZE = 4
+BENCHMARK_MARKER = '*'
+BENCHMARK_MARKERSIZE = 7
 # A trained model whose u_error exceeds this is treated as diverged, same bucket as a
 # true NaN crash -- legitimate NRMSE values in this sweep never approach 1, let alone this.
 DIVERGED_THRESHOLD = 1.0
@@ -72,31 +78,23 @@ def set_log_ticks(ax, n_labels=4):
 
 def plot_metric(key, out_path, clip_diverged):
     plt.figure(figsize=(6, 2.5))
-    masks = {}
     for arch in ARCHS:
         vals = np.array(errors[arch][key], dtype=float)
         mask = diverged_mask(arch)
-        masks[arch] = mask
         plot_vals = np.where(mask, np.nan, vals) if clip_diverged else vals
         plt.plot(N_OBS, plot_vals, color='black', label=LABELS[arch],
-                  linestyle=LINESTYLES[arch], marker='o', markersize=4)
+                  linestyle=LINESTYLES[arch], marker=MARKERS[arch], markersize=MARKERSIZE)
 
     plt.plot(N_OBS, BENCHMARK[key], color='black', label=BENCHMARK_LABEL,
-              linestyle='dashdot', marker='o', markersize=4)
+              linestyle='dashdot', marker=BENCHMARK_MARKER, markersize=BENCHMARK_MARKERSIZE)
 
     plt.yscale('log')
     ax = plt.gca()
 
-    # Fix the y-limits from the (already-plotted) legitimate data BEFORE adding markers,
-    # so every arch's x lands at the same height instead of shifting as later lines are added.
-    top = ax.get_ylim()[1]
+    # Diverged points stay excluded from the lines, but are no longer flagged with an x at
+    # the top of the axes; pin the limits to the legitimate data range all the same.
     if clip_diverged:
-        for arch in ARCHS:
-            if masks[arch].any():
-                diverged_n_obs = np.array(N_OBS)[masks[arch]]
-                ax.scatter(diverged_n_obs, [top] * len(diverged_n_obs),
-                           marker='x', color='black', s=60, zorder=5, clip_on=False)
-        ax.set_ylim(ax.get_ylim()[0], top)
+        ax.set_ylim(*ax.get_ylim())
 
     # keep the tight autoscaled range, just show more y-axis tick labels for readability
     set_log_ticks(ax)

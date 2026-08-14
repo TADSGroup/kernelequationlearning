@@ -12,6 +12,12 @@ N_OBS = [10, 30, 50, 100, 200, 300, 400, 500, 600]
 ARCHS = ['2x64', '3x128', '4x256']
 LABELS = {'2x64': r'2$\times$64', '3x128': r'3$\times$128', '4x256': r'4$\times$256'}
 LINESTYLES = {'2x64': 'solid', '3x128': 'dashed', '4x256': 'dotted'}
+# One marker per curve so the series stay distinguishable in grayscale even where the
+# lines overlap; the star reads much smaller than the others at equal markersize.
+MARKERS = {'2x64': '^', '3x128': 'o', '4x256': 's'}
+MARKERSIZE = 4
+BENCHMARK_MARKER = '*'
+BENCHMARK_MARKERSIZE = 7
 
 errors = np.load('../errors_archsweep.npy', allow_pickle=True).item()
 
@@ -65,9 +71,9 @@ def plot_metric(key, out_path):
     plt.figure(figsize=(6, 2.5))
     for arch in ARCHS:
         plt.plot(N_OBS, errors[arch][key], color='black', label=LABELS[arch],
-                  linestyle=LINESTYLES[arch], marker='o', markersize=4)
+                  linestyle=LINESTYLES[arch], marker=MARKERS[arch], markersize=MARKERSIZE)
     plt.plot(N_OBS, BENCHMARK[key], color='black', label=BENCHMARK_LABEL,
-              linestyle='dashdot', marker='o', markersize=4)
+              linestyle='dashdot', marker=BENCHMARK_MARKER, markersize=BENCHMARK_MARKERSIZE)
     plt.yscale('log')
     set_log_ticks(plt.gca())
     # Legend above the axes, close to the frame -- an in-plot box would overlap the curves.
