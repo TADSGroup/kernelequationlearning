@@ -15,9 +15,9 @@ LINESTYLES = {'2x64': 'solid', '3x128': 'dashed', '4x256': 'dotted'}
 # One marker per curve so the series stay distinguishable in grayscale even where the
 # lines overlap; the star reads much smaller than the others at equal markersize.
 MARKERS = {'2x64': '^', '3x128': 'o', '4x256': 's'}
-MARKERSIZE = 4
+MARKERSIZE = 6
 BENCHMARK_MARKER = '*'
-BENCHMARK_MARKERSIZE = 7
+BENCHMARK_MARKERSIZE = 10
 # A trained model whose u_error exceeds this is treated as diverged, same bucket as a
 # true NaN crash -- legitimate NRMSE values in this sweep never approach 1, let alone this.
 DIVERGED_THRESHOLD = 1.0
@@ -106,7 +106,7 @@ def plot_metric(key, out_path, clip_diverged):
     plt.close()
 
 
-# Main plots: diverged points excluded from the line, marked with an x at the top for the caption
+# Main plots: diverged points excluded from the lines (see the printout below for which)
 plot_metric('u', 'u_errors_varyIC_archsweep.pdf', clip_diverged=True)
 plot_metric('P', 'P_errors_varyIC_archsweep.pdf', clip_diverged=True)
 

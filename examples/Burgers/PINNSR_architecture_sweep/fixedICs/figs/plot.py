@@ -15,9 +15,9 @@ LINESTYLES = {'2x64': 'solid', '3x128': 'dashed', '4x256': 'dotted'}
 # One marker per curve so the series stay distinguishable in grayscale even where the
 # lines overlap; the star reads much smaller than the others at equal markersize.
 MARKERS = {'2x64': '^', '3x128': 'o', '4x256': 's'}
-MARKERSIZE = 4
+MARKERSIZE = 6
 BENCHMARK_MARKER = '*'
-BENCHMARK_MARKERSIZE = 7
+BENCHMARK_MARKERSIZE = 10
 
 errors = np.load('../errors_archsweep.npy', allow_pickle=True).item()
 
