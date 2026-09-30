@@ -1,6 +1,6 @@
 """
 Darcy composite figure:
-  left  : 2x3 grid, top row u_1,u_2,u_3 and bottom row f_1,f_2,f_3
+  left  : 2x2 grid, top row u_1,u_2 and bottom row f_1,f_2
   right : 2x1 block, top operator-learning error, bottom in-distribution error
           (shared x axis, no legends)
 
@@ -19,15 +19,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 # ---------------------------------------------------------------- settings
 OBS_PTS = 2              # which observation-count dataset the fields come from (2, 4 or 8)
-SAMPLES = [0, 1, 2]      # which of the m=5 sampled functions to show (0-based)
+SAMPLES = [0, 1]      # which of the m=5 sampled functions to show (0-based)
 OBS_PTS_LIST = [2, 4, 8]
+N_COL = len(SAMPLES)
 
-# Layout (inches). Every row of the 2x4 arrangement has height = FIELD.
+# Layout (inches). Every row of the 2x3 arrangement has height = FIELD.
 FIELD = 1.05             # side of each square u/f panel
 GAP_FIELD = 0.16         # horizontal gap between field panels
 GAP_ROW = 0.30           # vertical gap between top and bottom rows (both blocks)
 GAP_BLOCK = 0.52         # gap between field block and error block (room for y tick labels)
-ERR_W = 2.40             # width of the error panels
+ERR_W = FIELD            # width of the error panels (square, same size as field panels)
 MARGIN_L, MARGIN_R = 0.30, 0.06
 MARGIN_B, MARGIN_T = 0.22, 0.08
 
@@ -49,7 +50,7 @@ d = np.load(os.path.join(HERE, 'data.npz'))
 M = d['M']
 
 # ---------------------------------------------------------------- figure + axes
-fig_w = MARGIN_L + 3 * FIELD + 2 * GAP_FIELD + GAP_BLOCK + ERR_W + MARGIN_R
+fig_w = MARGIN_L + N_COL * FIELD + (N_COL - 1) * GAP_FIELD + GAP_BLOCK + ERR_W + MARGIN_R
 fig_h = MARGIN_B + 2 * FIELD + GAP_ROW + MARGIN_T
 fig = plt.figure(figsize=(fig_w, fig_h))
 
@@ -60,9 +61,9 @@ def add_axes(x, y, w, h):
 
 y_top = MARGIN_B + FIELD + GAP_ROW
 y_bot = MARGIN_B
-field_axes = [[add_axes(MARGIN_L + j * (FIELD + GAP_FIELD), y, FIELD, FIELD) for j in range(3)]
+field_axes = [[add_axes(MARGIN_L + j * (FIELD + GAP_FIELD), y, FIELD, FIELD) for j in range(N_COL)]
               for y in (y_top, y_bot)]
-x_err = MARGIN_L + 3 * FIELD + 2 * GAP_FIELD + GAP_BLOCK
+x_err = MARGIN_L + N_COL * FIELD + (N_COL - 1) * GAP_FIELD + GAP_BLOCK
 ax_ol = add_axes(x_err, y_top, ERR_W, FIELD)
 ax_id = add_axes(x_err, y_bot, ERR_W, FIELD)
 ax_ol.sharex(ax_id)
@@ -115,12 +116,12 @@ def plot_errors(ax, tag, xvals):
     labelLines(ax.get_lines(), align=True, xvals=xvals, fontsize=6.5)
 
 
-plot_errors(ax_ol, 'ol', xvals=[80, 45, 100] + [80, 45, 100])
-plot_errors(ax_id, 'id', xvals=[80, 45, 100] + [80, 45, 120])
+plot_errors(ax_ol, 'ol', xvals=[100, 45, 75] + [100, 45, 75])
+plot_errors(ax_id, 'id', xvals=[100, 45, 75] + [110, 40, 75])
 ax_ol.set_ylim(top=1e0)
 
 ax_id.set_xticks(M)
-ax_id.set_xticklabels([r'$2$', '', '', r'$16$', r'$32$', r'$64$', r'$128$'])
+ax_id.set_xticklabels([r'$2$', '', '', '', r'$32$', r'$64$', r'$128$'])
 ax_ol.tick_params(axis='x', which='both', labelbottom=False)
 
 for ext in ['pdf', 'png']:
