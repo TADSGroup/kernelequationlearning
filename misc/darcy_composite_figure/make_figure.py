@@ -21,6 +21,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OBS_PTS = 2              # which observation-count dataset the fields come from (2, 4 or 8)
 SAMPLES = [0, 1]      # which of the m=5 sampled functions to show (0-based)
 OBS_PTS_LIST = [2, 4, 8]
+LABELED_PTS = [2, 8]     # only these curves get an inline label (all curves are drawn)
 N_COL = len(SAMPLES)
 
 # Layout (inches). Every row of the 2x3 arrangement has height = FIELD.
@@ -104,20 +105,23 @@ for row, vals in enumerate([u, f]):
 
 # ---------------------------------------------------------------- errors
 def plot_errors(ax, tag, xvals):
+    labeled = []
     for short, ls, band in [('2step', 'dashed', 'red'), ('1step', 'solid', 'green')]:
         for n in OBS_PTS_LIST:
             k = f'{tag}_{short}_{n}'
-            ax.plot(M, d[k + '_mean'], label=f'{n} pts', marker='o', markersize=2.5,
-                    linestyle=ls, linewidth=0.9, color='black')
+            line, = ax.plot(M, d[k + '_mean'], label=f'{n} pts', marker='o', markersize=2.5,
+                            linestyle=ls, linewidth=0.9, color='black')
+            if n in LABELED_PTS:
+                labeled.append(line)
             ax.fill_between(M, d[k + '_lower'], d[k + '_upper'], alpha=.2, color=band,
                             linewidth=0)
     ax.set_yscale('log')
     ax.minorticks_off()
-    labelLines(ax.get_lines(), align=True, xvals=xvals, fontsize=6.5)
+    labelLines(labeled, align=True, xvals=xvals, fontsize=6.5)
 
 
-plot_errors(ax_ol, 'ol', xvals=[100, 45, 75] + [100, 45, 75])
-plot_errors(ax_id, 'id', xvals=[100, 45, 75] + [110, 40, 75])
+plot_errors(ax_ol, 'ol', xvals=[100, 75] + [100, 75])
+plot_errors(ax_id, 'id', xvals=[100, 75] + [110, 75])
 ax_ol.set_ylim(top=1e0)
 
 ax_id.set_xticks(M)
